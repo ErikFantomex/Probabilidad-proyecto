@@ -1,20 +1,13 @@
-db.sqlite3
 __pycache__/
 *.py[cod]
-.env
 .venv/
 venv/
+.env
+.env.*
 .vscode/
 .pytest_cache/
 .coverage
-media/
 data/raw/
 data/processed/
 models/
-
-requiriments.dev.txt
-
-# git config pull.rebase false  # merge
-#hint:   git config pull.rebase true   # rebase
-#hint:   git config pull.ff only       # fast-forward only
-#hint: 
+.streamlit/secrets.toml

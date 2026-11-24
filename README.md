@@ -1,54 +1,56 @@
 # MMA Probabilidad
 
-Estudio reproducible de peleas UFC para explorar cruces de estilos y la incertidumbre al pronosticar un ganador. El proyecto anterior de Dota 2 queda en los cuadernos y archivos `utils/`, pero `app.py` ahora sirve la aplicación de MMA.
+Aplicación Streamlit para comparar dos peleadores UFC y explorar qué relación tienen sus estilos observados con los resultados. La interfaz se adapta a pantallas estrechas y presenta probabilidades, antecedentes, tasas de finalización, calibración y comparación con cuotas iniciales.
 
-## Preguntas
+## Inicio rápido con Docker
 
-1. ¿Cómo varía la frecuencia de KO/TKO, sumisión y decisión entre cruces de estilos observados antes de la pelea?
-2. ¿Qué proporción de no favoritos gana en cada cruce?
-3. ¿Qué tan buenas son las probabilidades de un modelo basado en historiales previos frente a las cuotas iniciales sin margen?
+```powershell
+docker compose up --build -d
+```
 
-"Estilo" significa un perfil cuantitativo de comportamiento UFC, no una disciplina declarada. "Pelea emocionante" no tiene una definición objetiva en esta base; se reportan finalizaciones y sorpresas como resultados observables, sin afirmar que midan entretenimiento.
+Abre <http://localhost:8501>. Para detenerla: `docker compose down`.
 
-## Fuente y licencia
+El Dockerfile instala las dependencias, descarga [UFC Data v0.1.1](https://github.com/nlbair/ufc-data) desde un commit fijo, comprueba su SHA-256 y genera los historiales, informes y modelo dentro de la imagen. La construcción requiere acceso a Internet y puede tardar varios minutos. El contenedor ejecuta Streamlit como usuario sin privilegios y publica el puerto 8501.
 
-Se usa [UFC Data v0.1.1](https://github.com/nlbair/ufc-data), fijado al commit `a9c6543` y verificado con SHA-256 en `download_mma_data.py`. Cubre el 16 de febrero de 2013 al 10 de octubre de 2026 y combina UFC Stats, MMA Decisions, BestFightOdds y rankings. Los datos se publican bajo CC BY 4.0. Cita sugerida: Bair, N. (2026). *UFC Data: scorecards, round statistics, and betting odds, 2013 to 2026* (v0.1.1). Zenodo. https://doi.org/10.5281/zenodo.23458636. La [metodología original](https://github.com/nlbair/ufc-data/blob/main/METHODS.md) describe los emparejamientos entre fuentes.
-
-El archivo descargado se guarda en `data/raw/` y no se incluye en Git. Las cuotas iniciales son una referencia de comparación; no entrenan el modelo. La actualización de UFC no es automática: para cambiar la versión de la fuente hay que revisar esquema, procedencia y checksum.
-
-## Ejecutar en Windows
+## Ejecución local en Windows
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe download_mma_data.py
 .\.venv\Scripts\python.exe mma_pipeline.py
-.\.venv\Scripts\python.exe app.py
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-Abrir `http://127.0.0.1:5000/`; el análisis agregado está en `/analysis`.
+Abre <http://localhost:8501>. Para verificar la lógica temporal: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`.
 
-Para comprobar la lógica temporal: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`.
+## Qué muestra la aplicación
 
-## Método
+- **Simular combate:** elige dos peleadores con al menos tres peleas UFC, división, duración y si disputan un título. Muestra probabilidades de victoria, antecedentes previos y el resultado histórico del cruce de estilos. Es una estimación de enfrentamiento; no simula asaltos ni conoce lesiones o cambios de preparación.
+- **Resultados:** métricas de prueba cronológica para el modelo y las cuotas iniciales en los mismos combates, calibración por intervalos y tasas de victoria, KO/TKO, sumisión y finalización por cruce de estilos.
+- **Método y datos:** explica la procedencia, las fechas y las limitaciones. También se puede descargar el informe completo desde la vista de resultados.
 
-- Una fila por `fight_id`. Los IDs de los peleadores determinan un orden estable e independiente del resultado. Empates y *no contests* actualizan historiales, pero no entran en el modelo binario.
-- Las estadísticas acumuladas solo incluyen combates de fechas anteriores; las peleas del mismo día se incorporan juntas después de crear sus variables. Los datos del combate actual se usan únicamente para actualizar el futuro.
-- Las tasas de golpeo, derribo, control y sumisión se expresan por minuto o por 15 minutos. Con menos de tres peleas UFC, el estilo es `Sin historial`. Los umbrales exploratorios de `Sometedor`, `Luchador`, `Golpeador` y `Mixto` están en `mma_pipeline.py`.
-- La división temporal es entrenamiento antes de 2023, selección de modelo en 2023–2024 y prueba final en 2025–2026. Se comparan regresión logística y *histogram gradient boosting* por pérdida logarítmica de validación. Tras la prueba, el modelo de la aplicación se ajusta con todos los combates decisivos disponibles.
-- Se informan exactitud, Brier, pérdida logarítmica y AUC. Las tasas de finalización tienen intervalos de Wilson del 95%. Las comparaciones de estilos son descriptivas, no causales.
+Las columnas de Streamlit se apilan en pantallas estrechas. Las tablas y gráficos ocupan el ancho disponible, de acuerdo con la [documentación de diseño adaptable de Streamlit](https://docs.streamlit.io/develop/api-reference/layout/st.columns).
 
-## Archivos producidos
+## Datos y metodología
 
-| Ruta | Contenido |
+La fuente fija cubre del 16 de febrero de 2013 al 10 de octubre de 2026. Incluye 6,743 combates; 6,618 son decisivos y se usan para el modelo binario. Se acreditan [UFC Data](https://github.com/nlbair/ufc-data), UFC Stats, MMA Decisions, BestFightOdds y los archivos de rankings empleados por esa base. Los datos se publican bajo CC BY 4.0. Cita: Bair, N. (2026). *UFC Data: scorecards, round statistics, and betting odds, 2013 to 2026* (v0.1.1). Zenodo. https://doi.org/10.5281/zenodo.23458636.
+
+Cada fila de `data/processed/pre_fight_bouts.csv` representa un combate. Las características del peleador proceden únicamente de fechas anteriores; las peleas del mismo día se incorporan juntas una vez construidas sus variables. El orden de los peleadores se fija por ID e ignora quién ganó. Empates y *no contests* actualizan historiales, pero no entran en la clasificación binaria. La cuota inicial se usa solo como referencia externa.
+
+Los estilos `Golpeador`, `Luchador`, `Sometedor` y `Mixto` se asignan con umbrales exploratorios de golpeo, derribos, control y sumisiones previas. Con menos de tres peleas UFC se marca `Sin historial`. Estas etiquetas describen conducta observada, no una disciplina declarada ni una causa comprobada de victoria.
+
+El entrenamiento usa peleas anteriores a 2023; la selección del modelo, 2023–2024; la prueba, 2025–2026. Se reportan exactitud, Brier, pérdida logarítmica, AUC y calibración. El [informe generado](reports/analysis.md) contiene las tasas por estilo y sus intervalos. El modelo de la interfaz se reajusta después con todos los combates decisivos disponibles.
+
+## Archivos principales
+
+| Archivo | Función |
 |---|---|
-| `data/processed/pre_fight_bouts.csv` | Combates con variables anteriores a cada pelea. |
-| `data/processed/fighters_latest.csv` | Historial acumulado de cada peleador para la interfaz. |
-| `reports/analysis.md` | Hallazgos, comparación predictiva y limitaciones. |
-| `reports/style_matchups.csv` | Cruces de estilos e intervalos. |
-| `reports/metrics.json` | Auditoría y métricas de evaluación. |
-| `models/mma_model.joblib` | Modelo final para uso local. Cargar solo si fue generado por este proyecto. |
+| `app.py` | Interfaz Streamlit. |
+| `mma_service.py` | Comparación de peleadores independiente de la interfaz. |
+| `mma_pipeline.py` | Auditoría, variables previas, estilos, entrenamiento e informes. |
+| `download_mma_data.py` | Descarga fija con verificación SHA-256. |
+| `Dockerfile`, `compose.yaml` | Construcción y ejecución del contenedor. |
+| `reports/` | Métricas, cruces e informe generados. |
 
-## Límites
-
-UFC no representa todas las MMA. Los primeros combates UFC de un atleta carecen de trayectoria observable en esta base, y las estadísticas no miden daño, lesiones o preparación. La clasificación de estilos es sensible a sus umbrales. La interfaz compara peleadores con al menos tres peleas UFC y permite indicar si la pelea es por título, pero no comprueba elegibilidad real ni cartelera futura; sus probabilidades son una exploración estadística.
+El archivo de origen, los datos procesados y el modelo están excluidos de Git porque se regeneran. Para actualizar la fuente hay que revisar esquema, procedencia y checksum. UFC no representa todas las MMA y la base no mide daño, lesiones ni preparación. Las asociaciones entre estilos son descriptivas.
