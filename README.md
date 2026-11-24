@@ -2,6 +2,8 @@
 
 Aplicación Streamlit para comparar dos peleadores UFC y explorar qué relación tienen sus estilos observados con los resultados. La interfaz se adapta a pantallas estrechas y presenta probabilidades, antecedentes, tasas de finalización, calibración y comparación con cuotas iniciales.
 
+La presentación de cinco diapositivas está en [docs/mma-estilos-y-prediccion.pptx](docs/mma-estilos-y-prediccion.pptx). Su copia editable se puede regenerar con `pip install python-pptx` y `python docs/build_slides.py`.
+
 ## Inicio rápido con Docker
 
 ```powershell
@@ -42,6 +44,44 @@ Los estilos `Golpeador`, `Luchador`, `Sometedor` y `Mixto` se asignan con umbral
 
 El entrenamiento usa peleas anteriores a 2023; la selección del modelo, 2023–2024; la prueba, 2025–2026. Se reportan exactitud, Brier, pérdida logarítmica, AUC y calibración. El [informe generado](reports/analysis.md) contiene las tasas por estilo y sus intervalos. El modelo de la interfaz se reajusta después con todos los combates decisivos disponibles.
 
+## Guía para hacer más pruebas cruzadas
+
+El comando `cross_validate.py` hace **validación temporal con ventana de entrenamiento creciente**. Para cada periodo de prueba entrena de cero con todos los combates decisivos anteriores y predice solamente combates posteriores. Por defecto prueba 2019–2020, 2021–2022, 2023–2024 y 2025–2026. Mantiene fijos los dos modelos y sus hiperparámetros de `mma_pipeline.py`; no elige el ganador usando el periodo que evalúa. Evita `KFold` aleatorio: mezclar fechas permitiría aprender del futuro de un peleador.
+
+Desde la raíz del repositorio, en PowerShell:
+
+```powershell
+# Solo la primera vez, si aún no existen .venv ni los datos procesados:
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe download_mma_data.py
+.\.venv\Scripts\python.exe mma_pipeline.py
+
+# Repetir la evaluación y guardar el detalle por ventana:
+.\.venv\Scripts\python.exe cross_validate.py
+
+# Comprobar la lógica de construcción de variables y del servicio:
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+El resultado queda en `reports/cross_validation.csv`. `--start-year` cambia el primer año probado, `--end-year` es exclusivo y `--fold-years` fija la duración de cada ventana. Por ejemplo, para ventanas anuales de 2021 a 2026:
+
+```powershell
+.\.venv\Scripts\python.exe cross_validate.py --start-year 2021 --end-year 2027 --fold-years 1 --output reports/cv_anual.csv
+```
+
+Cada fila del CSV informa `train_n`, fechas máxima de entrenamiento y mínima/máxima de prueba, `n` y métricas. `subset=all` usa todos los combates decisivos de la ventana. `subset=with_odds` restringe **los tres pronósticos a las mismas peleas con cuota inicial**; solo ahí es justa la comparación con `market_open`. Menor `brier` y `log_loss` es mejor; mayor `auc` y `accuracy` es mejor. Brier y pérdida logarítmica juzgan la calidad de las probabilidades, no solo quién fue favorito. Revisa cada ventana por separado: una media puede ocultar deterioro reciente. No compares métricas de filas con distintos `subset` o tamaños `n` como si fueran el mismo conjunto.
+
+Para avanzar de forma reproducible:
+
+1. Conserva el CSV original, su versión, fecha final y SHA-256 del descargador. Si actualizas datos, revisa columnas, duplicados, fechas y peleas sin resultado antes de regenerar `data/processed/pre_fight_bouts.csv`.
+2. Define **antes de ejecutar** una hipótesis y una métrica principal; por ejemplo, “añadir una variable histórica de control reduce la pérdida logarítmica en al menos 0.01 en varias ventanas”. Cambia una cosa a la vez y guarda el comando, commit y CSV resultante.
+3. Calcula cualquier variable nueva solo con información anterior al evento. Mantén juntas las peleas del mismo día y verifica que `train_last_date < test_first_date` en todas las filas. Si una variable depende de cuotas, no la uses en el modelo que quieres comparar con el mercado.
+4. Compara la propuesta con `logistic`, `hist_gradient_boosting` y `market_open` en el mismo subconjunto. Revisa también resultados por año, división y pareja de estilos; informa el número de peleas y evita conclusiones fuertes en grupos pequeños. Para el análisis de estilos usa `reports/style_matchups.csv` y sus intervalos, sin atribuir causalidad a las etiquetas.
+5. Elige cambios con las ventanas anteriores y reserva combates posteriores, todavía no examinados, para una prueba final. Vuelve a entrenar el modelo de la aplicación mediante `mma_pipeline.py` solo después de decidir la configuración. Registra también cambios que empeoren el resultado para no seleccionar por azar el mejor intento.
+
+La prueba 2025–2026 y estos pliegues ya son datos históricos inspeccionados; tras iterar con ellos dejan de ser una prueba independiente. La evaluación futura requiere descargar eventos nuevos y fijar las predicciones **antes** de conocer sus resultados. Diferencias de tasa entre estilos son asociaciones descriptivas: el historial, la división y el emparejamiento pueden explicarlas parcialmente.
+
 ## Archivos principales
 
 | Archivo | Función |
@@ -49,6 +89,7 @@ El entrenamiento usa peleas anteriores a 2023; la selección del modelo, 2023–
 | `app.py` | Interfaz Streamlit. |
 | `mma_service.py` | Comparación de peleadores independiente de la interfaz. |
 | `mma_pipeline.py` | Auditoría, variables previas, estilos, entrenamiento e informes. |
+| `cross_validate.py` | Pruebas cronológicas repetidas y CSV de métricas por ventana. |
 | `download_mma_data.py` | Descarga fija con verificación SHA-256. |
 | `Dockerfile`, `compose.yaml` | Construcción y ejecución del contenedor. |
 | `reports/` | Métricas, cruces e informe generados. |
