@@ -13,10 +13,33 @@ Tasas descriptivas, sin ajuste causal. IC del 95% de Wilson para finalizaciones.
 
 | Cruce | Peleas | Victoria del primer estilo | IC 95% victoria | Finalización | IC 95% finalización | KO/TKO | Sumisión | Victoria del no favorito |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Luchador × Sometedor | 360 | 48.1% | 42.9%–53.2% | 56.9% | 51.8%–62.0% | 30.3% | 26.7% | 31.6% |
-| Luchador × Mixto | 387 | 57.4% | 52.4%–62.2% | 51.4% | 46.5%–56.4% | 38.2% | 13.2% | 32.9% |
-| Golpeador × Luchador | 494 | 46.2% | 41.8%–50.6% | 49.6% | 45.2%–54.0% | 35.4% | 14.2% | 34.8% |
 | Luchador × Luchador | 1403 | — | — | 45.6% | 43.0%–48.2% | 29.3% | 16.3% | 34.1% |
+| Golpeador × Luchador | 494 | 46.2% | 41.8%–50.6% | 49.6% | 45.2%–54.0% | 35.4% | 14.2% | 34.8% |
+| Luchador × Mixto | 387 | 57.4% | 52.4%–62.2% | 51.4% | 46.5%–56.4% | 38.2% | 13.2% | 32.9% |
+| Luchador × Sometedor | 360 | 48.1% | 42.9%–53.2% | 56.9% | 51.8%–62.0% | 30.3% | 26.7% | 31.6% |
+| Golpeador × Mixto | 81 | 44.4% | 34.1%–55.3% | 54.3% | 43.5%–64.7% | 44.4% | 9.9% | 29.1% |
+| Golpeador × Sometedor | 75 | 45.3% | 34.6%–56.5% | 53.3% | 42.2%–64.2% | 30.7% | 22.7% | 35.1% |
+| Golpeador × Golpeador | 66 | — | — | 43.9% | 32.6%–55.9% | 39.4% | 4.5% | 25.0% |
+| Mixto × Sometedor | 41 | 43.9% | 29.9%–59.0% | 65.8% | 50.5%–78.4% | 26.8% | 39.0% | 39.0% |
+| Mixto × Mixto | 36 | — | — | 61.1% | 44.9%–75.2% | 52.8% | 8.3% | 22.2% |
+| Sometedor × Sometedor | 31 | — | — | 51.6% | 34.8%–68.0% | 22.6% | 29.0% | 43.3% |
+
+### Cruces por especialidad
+
+Grappler agrupa Luchador y Sometedor. Golpeador KO exige dos victorias previas por KO/TKO y al menos la mitad de las victorias registradas por esa vía. Cada pelea figura una vez por tabla.
+
+| Cruce | Peleas | Victoria del primer estilo (IC 95%) | KO/TKO de cualquiera | Sumisión de cualquiera |
+|---|---:|---:|---:|---:|
+| Grappler × Grappler | 1794 | — | 29.4% | 18.6% |
+| Grappler × Mixto | 428 | 57.2% (52.5%–61.9%) | 37.1% | 15.7% |
+| Grappler × Otro golpeador | 335 | 56.4% (51.1%–61.6%) | 29.5% | 15.8% |
+| Golpeador KO × Grappler | 234 | 49.6% (43.2%–55.9%) | 42.3% | 14.5% |
+| Golpeador KO × Mixto | 50 | 50.0% (36.6%–63.4%) | 52.0% | 12.0% |
+| Mixto × Mixto | 36 | — | 52.8% | 8.3% |
+| Mixto × Otro golpeador | 31 | 64.5% (46.9%–78.9%) | 32.3% | 6.5% |
+| Golpeador KO × Otro golpeador | 28 | 53.6% (35.8%–70.5%) | 57.1% | 7.1% |
+| Otro golpeador × Otro golpeador | 23 | — | 17.4% | 4.3% |
+| Golpeador KO × Golpeador KO | 15 | — | 40.0% | 0.0% |
 
 ## Predicción cronológica
 

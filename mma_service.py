@@ -24,7 +24,7 @@ def current_profile(row, as_of=None):
     return profile
 
 
-def compare(bundle, fighters, pairs, fighter_a_id, fighter_b_id, division, rounds, title_bout=False, as_of=None):
+def compare(bundle, fighters, pairs, fighter_a_id, fighter_b_id, division, rounds, title_bout=False, as_of=None, specialists=None):
     """Estimate a matchup while averaging both fighter orderings."""
     if fighter_a_id == fighter_b_id or fighter_a_id not in fighters.index or fighter_b_id not in fighters.index:
         raise ValueError("Selecciona dos peleadores distintos.")
@@ -40,9 +40,16 @@ def compare(bundle, fighters, pairs, fighter_a_id, fighter_b_id, division, round
     probability = (model.predict_proba(forward)[0, 1] + 1 - model.predict_proba(reverse)[0, 1]) / 2
     pair_name = " × ".join(sorted((a["style"], b["style"])))
     matching = pairs[pairs.style_pair == pair_name]
+    specialist_stats = None
+    if specialists is not None and "specialist" in a and "specialist" in b:
+        key = " × ".join(sorted((a["specialist"], b["specialist"])))
+        detail = specialists[specialists.style_pair == key]
+        if not detail.empty:
+            specialist_stats = detail.iloc[0].to_dict()
     return {
         "a": a, "b": b, "probability_a": float(probability),
         "probability_b": float(1 - probability), "balance": float(1 - 2 * abs(probability - .5)),
         "pair_name": pair_name, "pair_stats": matching.iloc[0].to_dict() if len(matching) else None,
+        "specialist_stats": specialist_stats,
         "source_date": bundle["source_last_date"],
     }

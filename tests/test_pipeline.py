@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from mma_pipeline import build_dataset, new_history, profile
+from mma_pipeline import build_dataset, matchups, new_history, profile, update
 
 
 class PipelineTests(unittest.TestCase):
@@ -40,6 +40,26 @@ class PipelineTests(unittest.TestCase):
 
     def test_style_needs_prior_evidence(self):
         self.assertEqual(profile(new_history(), pd.Timestamp("2022-01-01").date())["style"], "Sin historial")
+
+    def test_ko_profile_counts_only_prior_wins_by_ko(self):
+        history = new_history()
+        history.update(fights=4, wins=3, ko_wins=1, seconds=900, sig_str_landed=70)
+        day = pd.Timestamp("2022-01-01").date()
+        bout = {"finish_type": "ko_tko", "fight_duration_sec": 0}
+        update(history, bout, "f1", "f2", "L", day)
+        self.assertEqual(profile(history, day)["specialist"], "Otro golpeador")
+        update(history, bout, "f1", "f2", "W", day)
+        self.assertEqual(profile(history, day)["specialist"], "Golpeador KO")
+
+    def test_specialist_wins_in_both_corner_orders(self):
+        bouts = pd.DataFrame({
+            "a_specialist": ["Grappler", "Golpeador KO", "Sin historial", "Golpeador KO"],
+            "b_specialist": ["Golpeador KO", "Grappler", "Grappler", "Grappler"],
+            "winner_a": [0, 1, 1, None], "finish_type": ["decision"] * 4,
+            "underdog_won": [0] * 4})
+        row = matchups(bouts, "specialist").iloc[0]
+        self.assertEqual((row.style_pair, row.fights, row.first_style_win_rate),
+                         ("Golpeador KO × Grappler", 2, 1.0))
 
 
 if __name__ == "__main__":

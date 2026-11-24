@@ -27,6 +27,7 @@ FIGHTERS = ROOT / "data/processed/fighters_latest.csv"
 MODEL = ROOT / "models/mma_model.joblib"
 REPORT = ROOT / "reports/analysis.md"
 PAIR_REPORT = ROOT / "reports/style_matchups.csv"
+SPECIAL_REPORT = ROOT / "reports/specialist_matchups.csv"
 METRICS = ROOT / "reports/metrics.json"
 
 METRIC_FIELDS = ["sig_str_landed", "sig_str_att", "td_landed", "td_att", "sub_att", "ctrl_sec", "kd"]
@@ -49,7 +50,7 @@ def ratio(top, bottom):
 
 
 def new_history():
-    return {"fights": 0, "wins": 0, "finishes": 0, "last_date": None, "seconds": 0.0,
+    return {"fights": 0, "wins": 0, "ko_wins": 0, "finishes": 0, "last_date": None, "seconds": 0.0,
             **{name: 0.0 for name in METRIC_FIELDS}, "opp_sig_landed": 0.0,
             "opp_td_landed": 0.0, "opp_td_att": 0.0}
 
@@ -90,6 +91,13 @@ def profile(history, bout_date, age=np.nan, height=np.nan, reach=np.nan):
         "kd15": ratio(history["kd"], per15),
     }
     result["style"] = style(result)
+    specialist = result["style"]
+    if specialist in ("Luchador", "Sometedor"):
+        specialist = "Grappler"
+    elif specialist == "Golpeador":
+        specialist = ("Golpeador KO" if history["ko_wins"] >= 2 and
+                      2 * history["ko_wins"] >= history["wins"] else "Otro golpeador")
+    result["specialist"] = specialist
     return result
 
 
@@ -105,6 +113,7 @@ def match_features(a, b, division, rounds, title=False):
 def update(history, row, side, opponent, result, bout_date):
     history["fights"] += 1
     history["wins"] += int(result == "W")
+    history["ko_wins"] += int(result == "W" and row["finish_type"] == "ko_tko")
     history["finishes"] += int(result == "W" and row["finish_type"] in ("ko_tko", "submission"))
     history["last_date"] = bout_date
     duration = number(row["fight_duration_sec"])
@@ -150,6 +159,7 @@ def build_dataset(source=SOURCE):
                       "finish_type": row.finish_type, "result_f1": row.result_f1,
                       "result_f2": row.result_f2}
             result.update(match_features(a, b, row.bout_division, number(row.scheduled_rounds), row.is_title_bout is True))
+            result.update(a_specialist=a["specialist"], b_specialist=b["specialist"])
             winner = number(row.winner)
             result["winner_a"] = int((winner == 2 and swap) or (winner == 1 and not swap)) if winner in (1, 2) else np.nan
             odd = number(row.f2_open_prob_novig if swap else row.f1_open_prob_novig)
@@ -190,7 +200,7 @@ def scores(y, probability):
     return {"n": len(y), "accuracy": round(float(accuracy_score(y, probability >= .5)), 4),
             "brier": round(float(brier_score_loss(y, probability)), 4),
             "log_loss": round(float(log_loss(y, probability, labels=[0, 1])), 4),
-            "auc": round(float(roc_auc_score(y, probability)), 4)}
+            "auc": round(float(roc_auc_score(y, probability)), 4) if len(np.unique(y)) == 2 else np.nan}
 
 
 def calibration(y, probability):
@@ -242,15 +252,21 @@ def wilson(successes, count):
     return round(center-half, 4), round(center+half, 4)
 
 
-def matchups(bouts):
-    subset = bouts[(bouts.winner_a.notna()) & (bouts.a_style != "Sin historial") & (bouts.b_style != "Sin historial")].copy()
-    subset["style_pair"] = subset.apply(lambda row: " × ".join(sorted((row.a_style, row.b_style))), axis=1)
+def pair_labels(bouts, field):
+    a, b = bouts[f"a_{field}"], bouts[f"b_{field}"]
+    labels = (a + " × " + b).where(a <= b, b + " × " + a)
+    return labels.mask(a.eq("Sin historial") | b.eq("Sin historial"))
+
+
+def matchups(bouts, field="style"):
+    subset = bouts[bouts.winner_a.notna()].copy()
+    subset["style_pair"] = pair_labels(subset, field)
     subset["is_finish"] = subset.finish_type.isin(["ko_tko", "submission"]).astype(int)
     rows = []
     for pair, group in subset.groupby("style_pair"):
         n = len(group)
         first_style, second_style = pair.split(" × ")
-        first_wins = int(((group.a_style == first_style) & (group.winner_a == 1) | (group.b_style == first_style) & (group.winner_a == 0)).sum()) if first_style != second_style else np.nan
+        first_wins = int(((group[f"a_{field}"] == first_style) & (group.winner_a == 1) | (group[f"b_{field}"] == first_style) & (group.winner_a == 0)).sum()) if first_style != second_style else np.nan
         finishes = int(group.is_finish.sum())
         odds_group = group[group.underdog_won.notna()]
         upset_n = len(odds_group)
@@ -267,8 +283,7 @@ def matchups(bouts):
     return pd.DataFrame(rows).sort_values("fights", ascending=False)
 
 
-def write_report(audit, metrics, pair):
-    top = pair[pair.fights >= 100].sort_values("finish_rate", ascending=False)
+def write_report(audit, metrics, pair, specialists):
     lines = ["# Análisis de estilos y predictibilidad UFC", "", "## Alcance y auditoría", "",
              f"Fuente: nlbair/ufc-data v0.1.1 (a9c6543), 2013–2026. Filas: {audit['source_rows']}; peleadores: {audit['fighters']}.",
              f"Combates decisivos: {audit['decisive_rows']}; con cuota inicial: {audit['odds_rows']}; IDs duplicados: {audit['duplicate_fight_ids']}.",
@@ -276,10 +291,18 @@ def write_report(audit, metrics, pair):
              "Los estilos son etiquetas de comportamiento previo: no equivalen al arte marcial declarado por el peleador.",
              "", "## Cruces de estilos", "", "Tasas descriptivas, sin ajuste causal. IC del 95% de Wilson para finalizaciones.", "",
              "| Cruce | Peleas | Victoria del primer estilo | IC 95% victoria | Finalización | IC 95% finalización | KO/TKO | Sumisión | Victoria del no favorito |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
-    for row in top.itertuples():
+    for row in pair.itertuples():
         style_win = f"{row.first_style_win_rate:.1%}" if np.isfinite(row.first_style_win_rate) else "—"
         win_ci = f"{row.first_style_win_ci_low:.1%}–{row.first_style_win_ci_high:.1%}" if np.isfinite(row.first_style_win_ci_low) else "—"
         lines.append(f"| {row.style_pair} | {row.fights} | {style_win} | {win_ci} | {row.finish_rate:.1%} | {row.finish_ci_low:.1%}–{row.finish_ci_high:.1%} | {row.ko_rate:.1%} | {row.submission_rate:.1%} | {row.underdog_win_rate:.1%} |")
+    lines += ["", "### Cruces por especialidad", "",
+              "Grappler agrupa Luchador y Sometedor. Golpeador KO exige dos victorias previas por KO/TKO y al menos la mitad de las victorias registradas por esa vía. Cada pelea figura una vez por tabla.",
+              "", "| Cruce | Peleas | Victoria del primer estilo (IC 95%) | KO/TKO de cualquiera | Sumisión de cualquiera |",
+              "|---|---:|---:|---:|---:|"]
+    for row in specialists.itertuples():
+        win = (f"{row.first_style_win_rate:.1%} ({row.first_style_win_ci_low:.1%}–{row.first_style_win_ci_high:.1%})"
+               if pd.notna(row.first_style_win_rate) else "—")
+        lines.append(f"| {row.style_pair} | {row.fights} | {win} | {row.ko_rate:.1%} | {row.submission_rate:.1%} |")
     lines += ["", "## Predicción cronológica", "",
               f"Entrenamiento: antes de 2023 ({metrics['splits']['train']}); selección: 2023–2024 ({metrics['splits']['validation']}); prueba: 2025–2026 ({metrics['splits']['test']}).",
               f"Modelo elegido por pérdida logarítmica de validación: **{metrics['selected']}**.", "",
@@ -310,10 +333,12 @@ def main():
     fighters.to_csv(FIGHTERS, index=False)
     pair = matchups(bouts)
     pair.to_csv(PAIR_REPORT, index=False)
+    specialists = matchups(bouts, "specialist")
+    specialists.to_csv(SPECIAL_REPORT, index=False)
     model, metrics = evaluate(bouts)
     joblib.dump({"model": model, "features": FEATURES, "source_last_date": audit["last_date"], "selected": metrics["selected"]}, MODEL)
     METRICS.write_text(json.dumps({"audit": audit, **metrics}, indent=2, ensure_ascii=False), encoding="utf-8")
-    write_report(audit, metrics, pair)
+    write_report(audit, metrics, pair, specialists)
     print(json.dumps({"audit": audit, "selected": metrics["selected"], "test": metrics["test"], "market": metrics["market_open_test"]}, ensure_ascii=False, indent=2))
 
 

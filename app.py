@@ -6,7 +6,7 @@ import joblib
 import pandas as pd
 import streamlit as st
 
-from mma_pipeline import FIGHTERS, METRICS, MODEL, PAIR_REPORT, REPORT
+from mma_pipeline import FIGHTERS, METRICS, MODEL, PAIR_REPORT, REPORT, SPECIAL_REPORT
 from mma_service import DIVISIONS, compare
 
 st.set_page_config(page_title="MMA Probabilidad", page_icon="🥊", layout="wide", initial_sidebar_state="collapsed")
@@ -30,11 +30,11 @@ def load_model(path):
 
 
 @st.cache_data(show_spinner="Cargando datos del estudio...")
-def load_tables(fighters_path, pairs_path, metrics_path):
+def load_tables(fighters_path, pairs_path, metrics_path, specialist_path):
     fighters = pd.read_csv(fighters_path).set_index("fighter_id", drop=False)
     pairs = pd.read_csv(pairs_path)
     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-    return fighters, pairs, metrics
+    return fighters, pairs, metrics, pd.read_csv(specialist_path)
 
 
 def percent(value):
@@ -81,11 +81,17 @@ def display_comparison(result):
                 st.write(f"{first_style} ganó {percent(pair['first_style_win_rate'])} de estos cruces.")
         else:
             st.info("Este cruce no tiene antecedentes suficientes con estilos clasificados.")
+        if result.get("specialist_stats"):
+            detail = result["specialist_stats"]
+            st.markdown(f"**{detail['style_pair']}**")
+            st.write(f"{detail['fights']} peleas históricas · KO/TKO {percent(detail['ko_rate'])} · Sumisión {percent(detail['submission_rate'])}")
+            if pd.notna(detail["first_style_win_rate"]):
+                st.caption(f"Victorias del primer perfil: {percent(detail['first_style_win_rate'])} (IC 95% {percent(detail['first_style_win_ci_low'])}–{percent(detail['first_style_win_ci_high'])}).")
         st.caption("Las tasas son descriptivas y no atribuyen causalidad a un estilo.")
     st.caption(f"Datos hasta {result['source_date']}. El modelo no conoce lesiones, preparación ni cambios recientes de equipo.")
 
 
-def display_results(metrics, pairs):
+def display_results(metrics, pairs, specialists):
     st.subheader("¿Qué muestran las peleas históricas?")
     cards = st.columns(3, gap="medium", border=True, wrap=True)
     cards[0].metric("Combates registrados", f"{metrics['audit']['source_rows']:,}")
@@ -119,10 +125,13 @@ def display_results(metrics, pairs):
     st.dataframe(calibration_table, hide_index=True, width="stretch")
 
     st.markdown("### Cruces de estilos")
-    common = pairs[pairs.fights >= 100].copy().sort_values("fights", ascending=False)
+    view = st.radio("Agrupar combates por", ["Estilo general", "Especialidad"], horizontal=True)
+    if view == "Especialidad":
+        st.caption("Grappler reúne a luchadores y sometedores. Golpeador KO requiere al menos dos victorias previas por KO/TKO y al menos la mitad de sus victorias por esa vía.")
+    common = (specialists if view == "Especialidad" else pairs).sort_values("fights", ascending=False)
     chart_data = (100 * common.set_index("style_pair")[["finish_rate", "ko_rate", "submission_rate"]]).rename(
         columns={"finish_rate": "Finalización (%)", "ko_rate": "KO/TKO (%)", "submission_rate": "Sumisión (%)"})
-    st.bar_chart(chart_data, horizontal=True, width="stretch")
+    st.bar_chart(chart_data, horizontal=True, width="stretch", stack=False)
     table = common[["style_pair", "fights", "first_style_win_rate", "first_style_win_ci_low", "first_style_win_ci_high",
                     "finish_rate", "finish_ci_low", "finish_ci_high", "underdog_win_rate"]].rename(columns={
         "style_pair": "Cruce", "fights": "Peleas", "first_style_win_rate": "Victoria del primer estilo",
@@ -143,13 +152,13 @@ st.markdown("""<section class="hero"><div class="eyebrow">MMA · DATOS · INCERT
 <h1>Antes de la campana, ¿qué podemos saber?</h1>
 <p>Explora enfrentamientos UFC y observa cómo cambian las probabilidades y los resultados entre estilos de pelea.</p></section>""", unsafe_allow_html=True)
 
-missing = [path for path in (MODEL, FIGHTERS, PAIR_REPORT, METRICS) if not path.exists()]
+missing = [path for path in (MODEL, FIGHTERS, PAIR_REPORT, METRICS, SPECIAL_REPORT) if not path.exists()]
 if missing:
     st.error("Faltan datos del estudio. Ejecuta `python download_mma_data.py` y `python mma_pipeline.py` antes de abrir la aplicación.")
     st.stop()
 
 bundle = load_model(MODEL)
-fighters, pairs, metrics = load_tables(FIGHTERS, PAIR_REPORT, METRICS)
+fighters, pairs, metrics, specialists = load_tables(FIGHTERS, PAIR_REPORT, METRICS, SPECIAL_REPORT)
 eligible = fighters[fighters.prior_fights >= 3].sort_values("name")
 labels = {fighter_id: f"{row['name']} · {int(row['prior_fights'])} peleas" for fighter_id, row in eligible.iterrows()}
 
@@ -167,7 +176,7 @@ with compare_tab:
         submitted = st.form_submit_button("Calcular enfrentamiento", type="primary", width="stretch")
     if submitted:
         try:
-            st.session_state["matchup_result"] = compare(bundle, fighters, pairs, fighter_a_id, fighter_b_id, division, rounds, title_bout)
+            st.session_state["matchup_result"] = compare(bundle, fighters, pairs, fighter_a_id, fighter_b_id, division, rounds, title_bout, specialists=specialists)
         except ValueError as exc:
             st.session_state.pop("matchup_result", None)
             st.warning(str(exc))
@@ -175,7 +184,7 @@ with compare_tab:
         display_comparison(st.session_state["matchup_result"])
 
 with results_tab:
-    display_results(metrics, pairs)
+    display_results(metrics, pairs, specialists)
 
 with method_tab:
     st.subheader("Cómo se construyó el estudio")

@@ -36,6 +36,8 @@ Las columnas de Streamlit se apilan en pantallas estrechas. Las tablas y gráfic
 
 ## Datos y metodología
 
+El [estudio de Topuria–Gaethje, Steveson–Sharaf y Gane–Hokit](docs/dinamica-de-poder.md) compara el cambio de división, la oportunidad de imponer un estilo y la relación entre peso, golpeo y control.
+
 La fuente fija cubre del 16 de febrero de 2013 al 10 de octubre de 2026. Incluye 6,743 combates; 6,618 son decisivos y se usan para el modelo binario. Se acreditan [UFC Data](https://github.com/nlbair/ufc-data), UFC Stats, MMA Decisions, BestFightOdds y los archivos de rankings empleados por esa base. Los datos se publican bajo CC BY 4.0. Cita: Bair, N. (2026). *UFC Data: scorecards, round statistics, and betting odds, 2013 to 2026* (v0.1.1). Zenodo. https://doi.org/10.5281/zenodo.23458636.
 
 Cada fila de `data/processed/pre_fight_bouts.csv` representa un combate. Las características del peleador proceden únicamente de fechas anteriores; las peleas del mismo día se incorporan juntas una vez construidas sus variables. El orden de los peleadores se fija por ID e ignora quién ganó. Empates y *no contests* actualizan historiales, pero no entran en la clasificación binaria. La cuota inicial se usa solo como referencia externa.
@@ -45,6 +47,24 @@ Los estilos `Golpeador`, `Luchador`, `Sometedor` y `Mixto` se asignan con umbral
 El entrenamiento usa peleas anteriores a 2023; la selección del modelo, 2023–2024; la prueba, 2025–2026. Se reportan exactitud, Brier, pérdida logarítmica, AUC y calibración. El [informe generado](reports/analysis.md) contiene las tasas por estilo y sus intervalos. El modelo de la interfaz se reajusta después con todos los combates decisivos disponibles.
 
 ## Guía para hacer más pruebas cruzadas
+
+### Comparar striker contra mixto, striker KO contra grappler y otros cruces
+
+En **Resultados → Cruces de estilos**, elige **Estilo general** para ver a todos los golpeadores (*strikers*) frente a mixtos, luchadores o sometedores. En **Especialidad**, *Grappler* agrupa a luchadores y sometedores. Un **Golpeador KO** cumple la regla de Golpeador y tiene al menos dos victorias previas por KO/TKO, que representan al menos el 50 % de sus victorias registradas. Los demás golpeadores forman el grupo **Otro golpeador**. Son umbrales exploratorios basados en el historial disponible hasta el día anterior.
+
+Cada vista cuenta una vez cada combate decisivo con ambos estilos conocidos. Las dos vistas comparten peleas. La tasa de victorias corresponde al primer estilo del nombre del cruce y queda vacía cuando ambos coinciden. Las tasas de KO/TKO y sumisión incluyen victorias de cualquiera de los dos. Consulta el número de peleas y el intervalo de Wilson al 95 % junto a cada tasa de victoria, especialmente en los cruces menos frecuentes.
+
+Desde la raíz del repositorio, con el entorno y los datos locales preparados, ejecuta en PowerShell
+
+```powershell
+.\.venv\Scripts\python.exe mma_pipeline.py
+.\.venv\Scripts\python.exe cross_validate.py --group-by style
+.\.venv\Scripts\python.exe cross_validate.py --group-by specialist
+```
+
+El primer comando regenera los [cruces generales](reports/style_matchups.csv) y los [cruces por especialidad](reports/specialist_matchups.csv) de todo el historial. Los otros dos entrenan cada modelo con las peleas anteriores a cada ventana y desglosan sus pronósticos por [estilo](reports/cross_validation_style.csv) o [especialidad](reports/cross_validation_specialist.csv). En esos archivos, filtra `style_pair` por `Golpeador × Mixto` o `Golpeador KO × Grappler`. La columna `n` cuenta los combates del cruce y subconjunto en esa ventana. AUC queda vacía si todos los resultados observados pertenecen a una sola clase. Puedes combinar `--group-by` con los parámetros de años y de salida que se explican a continuación.
+
+### Evaluación general por ventanas
 
 El comando `cross_validate.py` hace **validación temporal con ventana de entrenamiento creciente**. Para cada periodo de prueba entrena de cero con todos los combates decisivos anteriores y predice solamente combates posteriores. Por defecto prueba 2019–2020, 2021–2022, 2023–2024 y 2025–2026. Mantiene fijos los dos modelos y sus hiperparámetros de `mma_pipeline.py`; no elige el ganador usando el periodo que evalúa. Evita `KFold` aleatorio: mezclar fechas permitiría aprender del futuro de un peleador.
 
