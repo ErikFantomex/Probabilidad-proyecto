@@ -2,12 +2,21 @@
 
 import json
 
+import altair as alt
 import joblib
+import numpy as np
 import pandas as pd
 import streamlit as st
 
-from mma_pipeline import FIGHTERS, METRICS, MODEL, PAIR_REPORT, REPORT, SPECIAL_REPORT
+from mma_pipeline import FIGHTERS, METRICS, MODEL, PAIR_REPORT, PROCESSED, REPORT, SPECIAL_REPORT
 from mma_service import DIVISIONS, compare
+from monte_carlo import BAND_LABELS, favorites, fight_outcomes, p_value, running_rate, simulate_wins, with_bands
+
+FAVORITE_COLOR, UPSET_COLOR = "#69D7C4", "#F2777A"
+PRESETS = {"Gable Steveson vs. Sean Sharaf · 2026": ("Steveson", "Sharaf"),
+           "Ilia Topuria vs. Justin Gaethje · 2026": ("Topuria", "Gaethje"),
+           "Ilia Topuria vs. Charles Oliveira · 2025": ("Topuria", "Oliveira")}
+CUSTOM = "Probabilidad personalizada"
 
 st.set_page_config(page_title="MMA Probabilidad", page_icon="🥊", layout="wide", initial_sidebar_state="collapsed")
 
@@ -19,6 +28,9 @@ st.markdown("""
   .hero h1 {font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1.08; margin: .5rem 0;}
   .hero p {max-width: 720px; color: #bdcbd0; font-size: 1.05rem;}
   .subtle {color: #adbdc4; font-size: .9rem;}
+  .coins {display: flex; flex-wrap: wrap; gap: 4px; margin: .4rem 0 .6rem;}
+  .coins span {width: 14px; height: 14px; border-radius: 3px; display: inline-block;}
+  .legend span {display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin: 0 .3rem 0 .8rem; vertical-align: -1px;}
   @media (max-width: 640px) {.block-container {padding-left: 1rem; padding-right: 1rem; padding-top: 1rem;} .hero {padding-top: .4rem;}}
 </style>
 """, unsafe_allow_html=True)
@@ -148,6 +160,166 @@ def display_results(metrics, pairs, specialists):
                            file_name="analisis_mma.md", mime="text/markdown", width="stretch")
 
 
+@st.cache_data(show_spinner="Cargando cuotas históricas...")
+def load_favorites(path):
+    return with_bands(favorites(pd.read_csv(path)))
+
+
+@st.cache_data(show_spinner="Simulando historias alternativas de la UFC...")
+def simulate_history(probabilities, simulations, seed):
+    return simulate_wins(probabilities, simulations, np.random.default_rng(seed))
+
+
+def next_seed(key):
+    st.session_state[key] = int(st.session_state[key]) + 1
+
+
+def seed_controls(key, column):
+    st.session_state.setdefault(key, 7)
+    column.number_input("Semilla aleatoria", min_value=0, max_value=1_000_000, key=key,
+                        help="Misma semilla, mismos números aleatorios: la simulación es reproducible.")
+    column.button("🎲 Volver a lanzar", key=f"{key}_button", on_click=next_seed, args=(key,), width="stretch")
+    return int(st.session_state[key])
+
+
+def coin_grid(outcomes):
+    cells = "".join(f'<span style="background:{FAVORITE_COLOR if won else UPSET_COLOR}"></span>' for won in outcomes)
+    st.markdown(f'<div class="coins">{cells}</div>', unsafe_allow_html=True)
+
+
+def legend(favorite, underdog):
+    st.markdown(f'<div class="subtle legend"><span style="background:{FAVORITE_COLOR};margin-left:0"></span>gana {favorite}'
+                f'<span style="background:{UPSET_COLOR}"></span>sorpresa: gana {underdog}</div>', unsafe_allow_html=True)
+
+
+def convergence_chart(outcomes, true_upset):
+    """Frecuencia acumulada de sorpresas y embudo de ±1.96 errores estándar alrededor del valor real."""
+    rate = running_rate(~outcomes)
+    steps = np.unique(np.geomspace(1, len(rate), num=min(len(rate), 600)).astype(int))
+    spread = 1.96 * np.sqrt(true_upset * (1 - true_upset) / steps)
+    frame = pd.DataFrame({"Simulaciones": steps, "Estimado": 100 * rate[steps - 1],
+                          "Bajo": 100 * np.clip(true_upset - spread, 0, 1), "Alto": 100 * np.clip(true_upset + spread, 0, 1)})
+    x = alt.X("Simulaciones:Q", scale=alt.Scale(type="log"), title="Número de simulaciones (escala logarítmica)")
+    funnel = alt.Chart(frame).mark_area(opacity=.18, color=FAVORITE_COLOR).encode(
+        x=x, y=alt.Y("Bajo:Q", title="Frecuencia de sorpresas (%)"), y2="Alto:Q")
+    line = alt.Chart(frame).mark_line(color=UPSET_COLOR, strokeWidth=2).encode(
+        x=x, y="Estimado:Q", tooltip=[alt.Tooltip("Simulaciones:Q", format=","), alt.Tooltip("Estimado:Q", format=".2f")])
+    truth = alt.Chart(pd.DataFrame({"y": [100 * true_upset]})).mark_rule(color=FAVORITE_COLOR, strokeDash=[6, 4]).encode(y="y:Q")
+    st.altair_chart((funnel + truth + line).properties(height=300), width="stretch")
+    st.caption("Línea roja: lo que estima Monte Carlo después de *n* lanzamientos. Línea punteada: la probabilidad real de sorpresa. "
+               "Zona sombreada: donde cae el estimado el 95 % de las veces. Con pocas simulaciones el estimado brinca mucho; "
+               "con más se estabiliza (ley de los grandes números) y el error baja como 1/√n.")
+
+
+def history_chart(simulated, observed):
+    counts = pd.Series(simulated).value_counts().sort_index().rename_axis("Victorias").reset_index(name="Simulaciones")
+    low, high = np.percentile(simulated, [2.5, 97.5])
+    x = alt.X("Victorias:Q", title="Victorias de favoritos en cada historia simulada")
+    span = alt.Chart(pd.DataFrame({"a": [low], "b": [high]})).mark_rect(opacity=.12, color=FAVORITE_COLOR).encode(x="a:Q", x2="b:Q")
+    bars = alt.Chart(counts).mark_bar(color=FAVORITE_COLOR, opacity=.85).encode(
+        x=x, y=alt.Y("Simulaciones:Q", title="Historias simuladas"), tooltip=["Victorias", "Simulaciones"])
+    real = pd.DataFrame({"x": [observed], "label": [f"Realidad: {observed}"]})
+    rule = alt.Chart(real).mark_rule(color=UPSET_COLOR, strokeWidth=3).encode(x="x:Q")
+    text = alt.Chart(real).mark_text(color=UPSET_COLOR, align="right", dx=-6, dy=-6, fontWeight="bold").encode(
+        x="x:Q", y=alt.value(12), text="label:N")
+    st.altair_chart((span + bars + rule + text).properties(height=320), width="stretch")
+
+
+def display_monte_carlo(fights):
+    st.subheader("Monte Carlo: cuando no puedes repetir la pelea, la repite la computadora")
+    st.markdown("Cada pelea ocurre una sola vez, así que con un resultado no sabemos si la cuota estaba bien o si fue suerte. "
+                "**El método de Monte Carlo** imita el azar con números aleatorios: repite el experimento miles de veces y cuenta qué pasa. "
+                "La receta siempre es la misma:")
+    steps = st.columns(3, gap="small", border=True, wrap=True)
+    steps[0].markdown("**1 · Modelo del azar**  \nEl favorito gana con probabilidad *p* (la cuota sin margen).")
+    steps[1].markdown("**2 · Lanzar**  \nSe sortea un número *u* entre 0 y 1. Si *u* < *p*, gana el favorito; si no, hay sorpresa.")
+    steps[2].markdown("**3 · Repetir y contar**  \nMiles de lanzamientos muestran qué resultados son normales y cuáles son raros.")
+
+    st.markdown("### 1 · Una pelea, muchas veces")
+    controls, view = st.columns([1, 2], gap="large", wrap=True)
+    choice = controls.selectbox("Pelea", [*PRESETS, CUSTOM])
+    real_result = None
+    if choice == CUSTOM:
+        probability = controls.slider("Probabilidad del favorito", 50, 99, 75, format="%d %%") / 100
+        favorite, underdog = "el favorito", "el no favorito"
+    else:
+        fav_key, dog_key = PRESETS[choice]
+        match = fights[fights.favorite.str.contains(fav_key) & fights.underdog.str.contains(dog_key)]
+        if match.empty:
+            st.warning("Esa pelea no está en los datos procesados.")
+            return
+        row = match.iloc[-1]
+        probability, favorite, underdog = float(row.probability), row.favorite, row.underdog
+        real_result = f"En la realidad ganó **{favorite if row.favorite_won else underdog}**."
+    simulations = controls.select_slider("Simulaciones", [10, 50, 100, 500, 1_000, 5_000, 20_000, 100_000], value=500)
+    seed = seed_controls("mc_fight_seed", controls)
+
+    outcomes = fight_outcomes(probability, simulations, np.random.default_rng(seed))
+    upsets = int((~outcomes).sum())
+    estimate, true_upset = upsets / simulations, 1 - probability
+    error = np.sqrt(estimate * (1 - estimate) / simulations)
+    with view:
+        st.markdown(f"Cuota de apertura: **{favorite} {percent(probability)}** · {underdog} {percent(true_upset)}. "
+                    + (real_result or ""))
+        cards = st.columns(3, gap="small", border=True, wrap=True)
+        cards[0].metric("Sorpresas simuladas", f"{upsets:,} de {simulations:,}")
+        cards[1].metric("Estimado Monte Carlo", f"{estimate:.2%}", f"{100 * (estimate - true_upset):+.2f} pts vs. real", delta_color="off")
+        cards[2].metric("Error estándar", f"±{error:.2%}", help="√(p̂(1−p̂)/n): cuánto variaría el estimado si repitieras todo con otra semilla.")
+        shown = min(simulations, 300)
+        st.markdown(f"**Las primeras {shown} peleas simuladas**, una por cuadrito:")
+        coin_grid(outcomes[:shown])
+        legend(favorite, underdog)
+    convergence_chart(outcomes, true_upset)
+
+    st.markdown("### 2 · Miles de historias alternativas de la UFC")
+    st.markdown("Ahora la pregunta es más grande: **¿las cuotas aciertan con los favoritos?** Suponemos que sí (hipótesis nula) y "
+                "con esa suposición volvemos a jugar *todas* las peleas del grupo, cada una con su propia moneda cargada. "
+                "Cada repetición es una historia alternativa de la UFC. Luego comparamos cuántos favoritos ganaron de verdad.")
+    controls, view = st.columns([1, 2], gap="large", wrap=True)
+    band = controls.radio("Favoritos con probabilidad de…", [*BAND_LABELS, "Todas"], index=2)
+    histories = controls.select_slider("Historias simuladas", [100, 500, 2_000, 5_000, 20_000], value=2_000)
+    seed = seed_controls("mc_history_seed", controls)
+    group = fights if band == "Todas" else fights[fights.band == band]
+    observed = int(group.favorite_won.sum())
+
+    with view:
+        st.markdown(f"**Así se juega una historia**: {len(group):,} peleas, un número aleatorio *u* por pelea. Aquí van ocho de ellas.")
+        rng = np.random.default_rng(seed)
+        sample = group.sample(8, random_state=seed).copy()
+        sample["u"] = rng.random(len(sample))
+        st.dataframe(pd.DataFrame({
+            "Fecha": sample.event_date, "Favorito": sample.favorite, "Rival": sample.underdog,
+            "p (cuota)": sample.probability.map(percent), "u aleatorio": sample.u.round(3),
+            "Simulación": np.where(sample.u < sample.probability, "✅ favorito", "❌ sorpresa"),
+            "Realidad": np.where(sample.favorite_won == 1, "✅ favorito", "❌ sorpresa")}),
+            hide_index=True, width="stretch")
+
+    simulated = simulate_history(tuple(group.probability), histories, seed)
+    low, high = np.percentile(simulated, [2.5, 97.5])
+    value_p = p_value(simulated, observed)
+    cards = st.columns(4, gap="small", border=True, wrap=True)
+    cards[0].metric("Victorias reales de favoritos", f"{observed:,}", help=f"{percent(observed / len(group))} de {len(group):,} peleas")
+    cards[1].metric("Esperadas si la cuota acierta", f"{simulated.mean():,.0f}", help=f"Probabilidad media del mercado: {percent(group.probability.mean())}")
+    cards[2].metric("Rango normal (95 %)", f"{low:,.0f}–{high:,.0f}")
+    cards[3].metric("Valor p", f"{value_p:.4f}", help="Fracción de historias simuladas tan extremas como la realidad (bilateral).")
+    history_chart(simulated, observed)
+    if low <= observed <= high:
+        st.success("La realidad cae dentro de lo que el azar produce normalmente: los datos son compatibles con una cuota bien calibrada en este grupo.")
+    elif observed > high:
+        st.warning(f"La realidad queda **a la derecha** de casi todas las historias simuladas: estos favoritos ganaron más de lo que decía la cuota. "
+                   f"El mercado los **infravaloraba** (y sobrevaloraba a sus rivales).")
+    else:
+        st.warning("La realidad queda **a la izquierda** de casi todas las historias simuladas: estos favoritos ganaron menos de lo que decía la cuota.")
+    st.caption("Se comparan varios grupos a la vez, así que un valor p cercano a 0.05 merece cautela. Se usan cuotas de apertura sin margen; "
+               "excluye peleas sin cuota y las de 50/50 exacto. Con pocas historias, el valor p más pequeño posible es 2/(historias+1).")
+    with st.expander("Ver el código del método"):
+        st.code("""rng = np.random.default_rng(semilla)
+p = probabilidades_de_los_favoritos            # una por pelea del grupo
+u = rng.random((historias, len(p)))            # un número aleatorio por pelea y por historia
+victorias = (u < p).sum(axis=1)                # favoritos que ganan en cada historia
+valor_p = 2 * min(np.mean(victorias <= real), np.mean(victorias >= real))""", language="python")
+
+
 st.markdown("""<section class="hero"><div class="eyebrow">MMA · DATOS · INCERTIDUMBRE</div>
 <h1>Antes de la campana, ¿qué podemos saber?</h1>
 <p>Explora enfrentamientos UFC y observa cómo cambian las probabilidades y los resultados entre estilos de pelea.</p></section>""", unsafe_allow_html=True)
@@ -162,7 +334,7 @@ fighters, pairs, metrics, specialists = load_tables(FIGHTERS, PAIR_REPORT, METRI
 eligible = fighters[fighters.prior_fights >= 3].sort_values("name")
 labels = {fighter_id: f"{row['name']} · {int(row['prior_fights'])} peleas" for fighter_id, row in eligible.iterrows()}
 
-compare_tab, results_tab, method_tab = st.tabs(["🥊 Simular combate", "📊 Resultados", "📖 Método y datos"])
+compare_tab, results_tab, monte_carlo_tab, method_tab = st.tabs(["🥊 Simular combate", "📊 Resultados", "🎲 Monte Carlo", "📖 Método y datos"])
 with compare_tab:
     st.write("Elige dos peleadores y las condiciones del enfrentamiento. La estimación usa sus antecedentes UFC.")
     with st.form("matchup"):
@@ -185,6 +357,12 @@ with compare_tab:
 
 with results_tab:
     display_results(metrics, pairs, specialists)
+
+with monte_carlo_tab:
+    if PROCESSED.exists():
+        display_monte_carlo(load_favorites(PROCESSED))
+    else:
+        st.info("Ejecuta `python mma_pipeline.py` para generar las peleas procesadas que usa la simulación.")
 
 with method_tab:
     st.subheader("Cómo se construyó el estudio")

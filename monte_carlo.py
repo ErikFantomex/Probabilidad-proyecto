@@ -32,9 +32,28 @@ def favorites(bouts):
     })
 
 
+def fight_outcomes(probability, simulations, rng):
+    """Una "moneda cargada" por simulación: True si gana el favorito."""
+    return rng.random(simulations) < probability
+
+
+def running_rate(events):
+    """Frecuencia acumulada tras cada simulación (ley de los grandes números)."""
+    events = np.asarray(events, dtype=float)
+    return np.cumsum(events) / np.arange(1, len(events) + 1)
+
+
+def p_value(simulated, observed):
+    """Valor p bilateral con corrección +1 para no reportar nunca exactamente cero."""
+    simulated = np.asarray(simulated)
+    lower = (np.sum(simulated <= observed) + 1) / (len(simulated) + 1)
+    upper = (np.sum(simulated >= observed) + 1) / (len(simulated) + 1)
+    return float(min(1.0, 2 * min(lower, upper)))
+
+
 def simulate_fight(probability, simulations, rng):
     """Repite una pelea; devuelve la frecuencia de sorpresas y su error estándar."""
-    upsets = rng.random(simulations) >= probability
+    upsets = ~fight_outcomes(probability, simulations, rng)
     rate = upsets.mean()
     return rate, np.sqrt(rate * (1 - rate) / simulations)
 
@@ -51,18 +70,18 @@ def simulate_wins(probabilities, simulations, rng, chunk=500):
 
 def calibration_test(probabilities, observed_wins, simulations, rng):
     simulated = simulate_wins(probabilities, simulations, rng)
-    # Valor p bilateral con corrección +1 para no reportar nunca exactamente cero.
-    lower = (np.sum(simulated <= observed_wins) + 1) / (simulations + 1)
-    upper = (np.sum(simulated >= observed_wins) + 1) / (simulations + 1)
     low, high = np.percentile(simulated, [2.5, 97.5])
     return {"expected_wins": float(simulated.mean()), "range_low": float(low), "range_high": float(high),
-            "p_value": float(min(1.0, 2 * min(lower, upper)))}
+            "p_value": p_value(simulated, observed_wins)}
+
+
+def with_bands(fights):
+    return fights.assign(band=pd.cut(fights.probability, BANDS, labels=BAND_LABELS, include_lowest=True))
 
 
 def run(bouts, simulations=20_000, seed=42):
     rng = np.random.default_rng(seed)
-    fights = favorites(bouts)
-    fights["band"] = pd.cut(fights.probability, BANDS, labels=BAND_LABELS, include_lowest=True)
+    fights = with_bands(favorites(bouts))
     rows = []
     for band, group in [*fights.groupby("band", observed=True), ("Todas", fights)]:
         test = calibration_test(group.probability, group.favorite_won.sum(), simulations, rng)

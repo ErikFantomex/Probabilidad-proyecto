@@ -30,6 +30,7 @@ Abre <http://localhost:8501>. Para verificar la lógica temporal: `.\.venv\Scrip
 
 - **Simular combate:** elige dos peleadores con al menos tres peleas UFC, división, duración y si disputan un título. Muestra probabilidades de victoria, antecedentes previos y el resultado histórico del cruce de estilos. Es una estimación de enfrentamiento; no simula asaltos ni conoce lesiones o cambios de preparación.
 - **Resultados:** métricas de prueba cronológica para el modelo y las cuotas iniciales en los mismos combates, calibración por intervalos y tasas de victoria, KO/TKO, sumisión y finalización por cruce de estilos.
+- **Monte Carlo:** ilustra el método paso a paso. Primero repite una pelea (Steveson–Sharaf, Topuria–Gaethje, Topuria–Oliveira o una probabilidad propia) y muestra cada simulación como un cuadrito y la convergencia del estimado hacia la probabilidad real. Después simula miles de historias alternativas de la UFC suponiendo que la cuota acierta y compara, con un histograma y un valor p, cuántos favoritos ganaron de verdad. La semilla y el número de simulaciones se pueden cambiar.
 - **Método y datos:** explica la procedencia, las fechas y las limitaciones. También se puede descargar el informe completo desde la vista de resultados.
 
 Las columnas de Streamlit se apilan en pantallas estrechas. Las tablas y gráficos ocupan el ancho disponible, de acuerdo con la [documentación de diseño adaptable de Streamlit](https://docs.streamlit.io/develop/api-reference/layout/st.columns).

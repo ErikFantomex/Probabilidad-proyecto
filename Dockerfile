@@ -15,7 +15,7 @@ COPY download_mma_data.py mma_pipeline.py ./
 # same Python dependencies used when the container serves predictions.
 RUN python download_mma_data.py && python mma_pipeline.py
 
-COPY mma_service.py app.py ./
+COPY mma_service.py monte_carlo.py app.py ./
 COPY .streamlit/config.toml .streamlit/config.toml
 RUN useradd --create-home --uid 10001 mma && chown -R mma:mma /app
 
