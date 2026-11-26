@@ -22,11 +22,12 @@ st.set_page_config(page_title="MMA Probabilidad", page_icon="🥊", layout="wide
 
 st.markdown("""
 <style>
-  .block-container {max-width: 1200px; padding-top: 2rem; padding-bottom: 3rem;}
-  .hero {padding: 1.4rem 0 1.6rem; border-bottom: 1px solid #31434a; margin-bottom: 1.5rem;}
+  html {font-size: clamp(16px, calc(10px + .45vw), 20px);}
+  .block-container {max-width: 100%; padding: 3.5rem clamp(1rem, 3vw, 3.5rem) 3rem;}
+  .hero {padding: .6rem 0 1.2rem; border-bottom: 1px solid #31434a; margin-bottom: 1.2rem;}
   .hero .eyebrow {font-size: .8rem; letter-spacing: .18em; color: #69d7c4; font-weight: 700;}
   .hero h1 {font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1.08; margin: .5rem 0;}
-  .hero p {max-width: 720px; color: #bdcbd0; font-size: 1.05rem;}
+  .hero p {max-width: 60ch; color: #bdcbd0; font-size: 1.05rem;}
   .subtle {color: #adbdc4; font-size: .9rem;}
   [class*="st-key-mc_"] [data-testid="stMetricValue"] {font-size: clamp(1.15rem, 2vw, 1.55rem);}
   [class*="st-key-mc_"] [data-testid="stMetricValue"] > div {overflow: visible; white-space: nowrap;}
@@ -34,7 +35,7 @@ st.markdown("""
   .coins {display: flex; flex-wrap: wrap; gap: 4px; margin: .4rem 0 .6rem;}
   .coins span {width: 14px; height: 14px; border-radius: 3px; display: inline-block;}
   .legend span {display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin: 0 .3rem 0 .8rem; vertical-align: -1px;}
-  @media (max-width: 640px) {.block-container {padding-left: 1rem; padding-right: 1rem; padding-top: 1rem;} .hero {padding-top: .4rem;}}
+  @media (max-width: 640px) {.block-container {padding-left: 1rem; padding-right: 1rem; padding-top: 3rem;} .hero {padding-top: .4rem;}}
 </style>
 """, unsafe_allow_html=True)
 
