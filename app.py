@@ -28,6 +28,9 @@ st.markdown("""
   .hero h1 {font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1.08; margin: .5rem 0;}
   .hero p {max-width: 720px; color: #bdcbd0; font-size: 1.05rem;}
   .subtle {color: #adbdc4; font-size: .9rem;}
+  [class*="st-key-mc_"] [data-testid="stMetricValue"] {font-size: clamp(1.15rem, 2vw, 1.55rem);}
+  [class*="st-key-mc_"] [data-testid="stMetricValue"] > div {overflow: visible; white-space: nowrap;}
+  [class*="st-key-mc_"] [data-testid="stMetricLabel"] p {font-size: .82rem; white-space: normal;}
   .coins {display: flex; flex-wrap: wrap; gap: 4px; margin: .4rem 0 .6rem;}
   .coins span {width: 14px; height: 14px; border-radius: 3px; display: inline-block;}
   .legend span {display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin: 0 .3rem 0 .8rem; vertical-align: -1px;}
@@ -261,8 +264,8 @@ def display_monte_carlo(fights):
     with view:
         st.markdown(f"Cuota de apertura: **{favorite} {percent(probability)}** · {underdog} {percent(true_upset)}. "
                     + (real_result or ""))
-        cards = st.columns(3, gap="small", border=True, wrap=True)
-        cards[0].metric("Sorpresas simuladas", f"{upsets:,} de {simulations:,}")
+        cards = st.container(key="mc_fight_cards").columns(3, gap="small", border=True, wrap=True)
+        cards[0].metric(f"Sorpresas en {simulations:,} peleas", f"{upsets:,}")
         cards[1].metric("Estimado Monte Carlo", f"{estimate:.2%}", f"{100 * (estimate - true_upset):+.2f} pts vs. real", delta_color="off")
         cards[2].metric("Error estándar", f"±{error:.2%}", help="√(p̂(1−p̂)/n): cuánto variaría el estimado si repitieras todo con otra semilla.")
         shown = min(simulations, 300)
@@ -297,7 +300,7 @@ def display_monte_carlo(fights):
     simulated = simulate_history(tuple(group.probability), histories, seed)
     low, high = np.percentile(simulated, [2.5, 97.5])
     value_p = p_value(simulated, observed)
-    cards = st.columns(4, gap="small", border=True, wrap=True)
+    cards = st.container(key="mc_history_cards").columns(4, gap="small", border=True, wrap=True)
     cards[0].metric("Victorias reales de favoritos", f"{observed:,}", help=f"{percent(observed / len(group))} de {len(group):,} peleas")
     cards[1].metric("Esperadas si la cuota acierta", f"{simulated.mean():,.0f}", help=f"Probabilidad media del mercado: {percent(group.probability.mean())}")
     cards[2].metric("Rango normal (95 %)", f"{low:,.0f}–{high:,.0f}")
