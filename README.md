@@ -102,6 +102,20 @@ Para avanzar de forma reproducible:
 
 La prueba 2025–2026 y estos pliegues ya son datos históricos inspeccionados; tras iterar con ellos dejan de ser una prueba independiente. La evaluación futura requiere descargar eventos nuevos y fijar las predicciones **antes** de conocer sus resultados. Diferencias de tasa entre estilos son asociaciones descriptivas: el historial, la división y el emparejamiento pueden explicarlas parcialmente.
 
+## Ejemplo de Monte Carlo: ¿las cuotas aciertan con los favoritos?
+
+`monte_carlo.py` responde con simulación una pregunta que plantea el [estudio de casos](docs/dinamica-de-poder.md): ¿la sorpresa de Sharaf sobre Steveson, que abrió con 90,4 %, fue mala suerte o un error del mercado?
+
+1. **Una pelea.** Repite Steveson–Sharaf 100 000 veces con la probabilidad de la cuota y cuenta las sorpresas (≈ 1 de cada 10).
+2. **Todas las peleas.** Supone que el mercado está bien calibrado: cada favorito gana con su probabilidad implícita. Simula 20 000 historias alternativas de la UFC lanzando una "moneda cargada" por pelea y compara las victorias reales de los favoritos con el rango simulado, por tramos de probabilidad. El valor p es la fracción de simulaciones tan extremas como lo observado.
+
+```powershell
+.\.venv\Scripts\python.exe mma_pipeline.py      # si aún no existen los datos procesados
+.\.venv\Scripts\python.exe monte_carlo.py --simulations 20000 --seed 42
+```
+
+Genera [reports/monte_carlo.md](reports/monte_carlo.md) y [reports/monte_carlo_favorites.csv](reports/monte_carlo_favorites.csv). Con los datos fijos, los favoritos de 50–70 % ganan lo esperado, pero los de 70 % o más ganan más de lo que indica la cuota de apertura: el mercado los infravaloraba. Son comparaciones múltiples sobre cuotas de apertura, no de cierre.
+
 ## Archivos principales
 
 | Archivo | Función |
@@ -110,6 +124,7 @@ La prueba 2025–2026 y estos pliegues ya son datos históricos inspeccionados; 
 | `mma_service.py` | Comparación de peleadores independiente de la interfaz. |
 | `mma_pipeline.py` | Auditoría, variables previas, estilos, entrenamiento e informes. |
 | `cross_validate.py` | Pruebas cronológicas repetidas y CSV de métricas por ventana. |
+| `monte_carlo.py` | Simulación Monte Carlo de sorpresas frente a la cuota de apertura. |
 | `download_mma_data.py` | Descarga fija con verificación SHA-256. |
 | `Dockerfile`, `compose.yaml` | Construcción y ejecución del contenedor. |
 | `reports/` | Métricas, cruces e informe generados. |
