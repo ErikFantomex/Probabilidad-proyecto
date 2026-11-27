@@ -5,6 +5,10 @@ backgroundColor = "#10171D"
 secondaryBackgroundColor = "#1B2931"
 textColor = "#EDF2F4"
 font = "sans serif"
+baseFontSize = 18
+baseRadius = "0.6rem"
+borderColor = "#2C3E46"
+chartCategoricalColors = ["#69D7C4", "#F2B35B", "#F2777A", "#8FA8FF", "#C792EA"]
 
 [server]
 headless = true

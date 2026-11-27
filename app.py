@@ -22,20 +22,37 @@ st.set_page_config(page_title="MMA Probabilidad", page_icon="🥊", layout="wide
 
 st.markdown("""
 <style>
-  html {font-size: clamp(16px, calc(10px + .45vw), 20px);}
-  .block-container {max-width: 100%; padding: 3.5rem clamp(1rem, 3vw, 3.5rem) 3rem;}
-  .hero {padding: .6rem 0 1.2rem; border-bottom: 1px solid #31434a; margin-bottom: 1.2rem;}
+  .block-container {max-width: 1560px; padding: 3.5rem clamp(1rem, 3vw, 3rem) 4rem;}
+  .hero {padding: .4rem 0 1.4rem; border-bottom: 1px solid #2c3e46; margin-bottom: 1rem;}
   .hero .eyebrow {font-size: .8rem; letter-spacing: .18em; color: #69d7c4; font-weight: 700;}
-  .hero h1 {font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1.08; margin: .5rem 0;}
-  .hero p {max-width: 60ch; color: #bdcbd0; font-size: 1.05rem;}
-  .subtle {color: #adbdc4; font-size: .9rem;}
-  [class*="st-key-mc_"] [data-testid="stMetricValue"] {font-size: clamp(1.15rem, 2vw, 1.55rem);}
-  [class*="st-key-mc_"] [data-testid="stMetricValue"] > div {overflow: visible; white-space: nowrap;}
-  [class*="st-key-mc_"] [data-testid="stMetricLabel"] p {font-size: .82rem; white-space: normal;}
-  .coins {display: flex; flex-wrap: wrap; gap: 4px; margin: .4rem 0 .6rem;}
-  .coins span {width: 14px; height: 14px; border-radius: 3px; display: inline-block;}
-  .legend span {display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin: 0 .3rem 0 .8rem; vertical-align: -1px;}
-  @media (max-width: 640px) {.block-container {padding-left: 1rem; padding-right: 1rem; padding-top: 3rem;} .hero {padding-top: .4rem;}}
+  .hero h1 {font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.08; margin: .4rem 0 .6rem;}
+  .hero p {max-width: 62ch; color: #bdcbd0; font-size: 1.1rem; margin: 0;}
+  .subtle {color: #adbdc4; font-size: .92rem;}
+  /* Pestañas: más grandes y fáciles de ubicar */
+  [role="tablist"] {gap: .4rem;}
+  [data-testid="stTab"] {padding: .65rem 1.1rem !important; border-radius: .6rem .6rem 0 0;}
+  [data-testid="stTab"] p {font-size: 1.08rem !important; font-weight: 600;}
+  [data-testid="stTab"][aria-selected="true"] {background: #1b2931;}
+  [role="tabpanel"] {padding-top: 1.4rem;}
+  /* Lectura cómoda: párrafos y notas sin líneas eternas */
+  [data-testid="stMarkdownContainer"] > p, [data-testid="stCaptionContainer"] {max-width: 110ch;}
+  [data-testid="stCaptionContainer"] {font-size: .9rem; line-height: 1.5; color: #adbdc4;}
+  [data-testid="stWidgetLabel"] p {font-size: .95rem; font-weight: 600; color: #d5e0e4;}
+  h3 {margin-top: 1.6rem !important;}
+  /* Tarjetas de métricas */
+  [data-testid="stMetricLabel"] p {font-size: .9rem; color: #bdcbd0; white-space: normal;}
+  [data-testid="stMetricValue"] {font-size: clamp(1.5rem, 2.4vw, 2.2rem);}
+  [class*="st-key-mc_"] [data-testid="stMetricValue"] {font-size: clamp(1.3rem, 1.9vw, 1.8rem);}
+  [data-testid="stMetricValue"] > div {overflow: visible; white-space: nowrap;}
+  .coins {display: flex; flex-wrap: wrap; gap: 4px; margin: .5rem 0 .7rem;}
+  .coins span {width: 17px; height: 17px; border-radius: 4px; display: inline-block;}
+  .legend span {display: inline-block; width: 13px; height: 13px; border-radius: 3px; margin: 0 .35rem 0 .9rem; vertical-align: -2px;}
+  @media (max-width: 640px) {
+    .block-container {padding-left: 1rem; padding-right: 1rem; padding-top: 3rem;}
+    [data-testid="stTab"] {padding: .5rem .6rem !important;}
+    [data-testid="stTab"] p {font-size: .95rem !important;}
+    .coins span {width: 13px; height: 13px;}
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -107,6 +124,48 @@ def display_comparison(result):
     st.caption(f"Datos hasta {result['source_date']}. El modelo no conoce lesiones, preparación ni cambios recientes de equipo.")
 
 
+def readable(chart, height):
+    """Ejes, leyendas y tooltips con letra legible en pantallas HD."""
+    return (chart.properties(height=height)
+            .configure_axis(labelFontSize=15, titleFontSize=16, titlePadding=14, labelPadding=6, labelColor="#c9d6db",
+                            titleColor="#dce6ea", titleFontWeight=600, gridColor="#22323a", domainColor="#3a4f58", tickColor="#3a4f58")
+            .configure_axisQuantitative(tickCount=8)
+            .configure_legend(labelFontSize=15, titleFontSize=15, orient="top", symbolSize=180, labelColor="#dce6ea", titleColor="#dce6ea")
+            .configure_view(strokeWidth=0))
+
+
+def calibration_chart(calibration):
+    frame = calibration.assign(Estimada=100 * calibration.mean_probability, Observada=100 * calibration.observed_win_rate,
+                               Peleas=calibration.n, Intervalo=calibration["range"])
+    ticks = list(range(0, 101, 10))
+    axis_x = alt.X("Estimada:Q", title="Probabilidad estimada por el modelo (%)",
+                   scale=alt.Scale(domain=[-3, 103], nice=False), axis=alt.Axis(values=ticks))
+    axis_y = alt.Y("Observada:Q", title="Victorias observadas (%)",
+                   scale=alt.Scale(domain=[-3, 103], nice=False), axis=alt.Axis(values=ticks))
+    ideal = alt.Chart(pd.DataFrame({"x": [0, 100], "y": [0, 100]})).mark_line(color="#7f939b", strokeDash=[6, 5]).encode(x="x:Q", y="y:Q")
+    tips = ["Intervalo:N", "Peleas:Q", alt.Tooltip("Estimada:Q", format=".1f"), alt.Tooltip("Observada:Q", format=".1f")]
+    line = alt.Chart(frame).mark_line(color=FAVORITE_COLOR, strokeWidth=2.5).encode(x=axis_x, y=axis_y)
+    points = alt.Chart(frame).mark_circle(color=FAVORITE_COLOR, opacity=.9, stroke="#10171d", strokeWidth=1.5).encode(
+        x=axis_x, y=axis_y, size=alt.Size("Peleas:Q", scale=alt.Scale(range=[60, 700]), legend=None), tooltip=tips)
+    st.altair_chart(readable(ideal + line + points, 420), width="stretch")
+
+
+def matchup_chart(common):
+    names = {"finish_rate": "Finalización", "ko_rate": "KO/TKO", "submission_rate": "Sumisión"}
+    long = (common.melt(id_vars=["style_pair", "fights"], value_vars=list(names), var_name="Métrica", value_name="Tasa")
+            .assign(Métrica=lambda d: d["Métrica"].map(names), Tasa=lambda d: 100 * d.Tasa))
+    order = common.style_pair.tolist()
+    chart = alt.Chart(long).mark_bar(cornerRadiusEnd=3, height={"band": .85}).encode(
+        y=alt.Y("style_pair:N", sort=order, title=None, axis=alt.Axis(labelLimit=360, labelFontSize=15, labelPadding=10)),
+        yOffset=alt.YOffset("Métrica:N", sort=list(names.values())),
+        x=alt.X("Tasa:Q", title="Porcentaje de peleas (%)", axis=alt.Axis(values=list(range(0, 101, 10)))),
+        color=alt.Color("Métrica:N", sort=list(names.values()), title=None,
+                        scale=alt.Scale(domain=list(names.values()), range=[FAVORITE_COLOR, "#F2B35B", "#8FA8FF"])),
+        tooltip=[alt.Tooltip("style_pair:N", title="Cruce"), alt.Tooltip("fights:Q", title="Peleas"), "Métrica:N",
+                 alt.Tooltip("Tasa:Q", format=".1f", title="Tasa (%)")])
+    st.altair_chart(readable(chart, 66 * len(order) + 40), width="stretch")
+
+
 def display_results(metrics, pairs, specialists):
     st.subheader("¿Qué muestran las peleas históricas?")
     cards = st.columns(3, gap="medium", border=True, wrap=True)
@@ -130,24 +189,23 @@ def display_results(metrics, pairs, specialists):
 
     st.markdown("### Calibración del modelo")
     calibration = pd.DataFrame(metrics["calibration_test"])
-    chart = calibration.set_index("mean_probability")[["observed_win_rate"]].rename(columns={"observed_win_rate": "Victorias observadas"}) * 100
-    chart.index = chart.index * 100
-    chart["Calibración ideal"] = chart.index
-    st.line_chart(chart, x_label="Probabilidad estimada (%)", y_label="Frecuencia de victoria (%)", width="stretch")
-    st.caption("Los extremos tienen pocas peleas; consulta el número de observaciones por intervalo en la tabla.")
-    calibration_table = calibration.rename(columns={"range": "Intervalo", "n": "Peleas", "mean_probability": "Probabilidad media", "observed_win_rate": "Victorias observadas"})
-    for column in ("Probabilidad media", "Victorias observadas"):
-        calibration_table[column] = calibration_table[column].map(percent)
-    st.dataframe(calibration_table, hide_index=True, width="stretch")
+    chart_col, table_col = st.columns([3, 2], gap="large", wrap=True)
+    with chart_col:
+        calibration_chart(calibration)
+    with table_col:
+        calibration_table = calibration.rename(columns={"range": "Intervalo", "n": "Peleas", "mean_probability": "Probabilidad media", "observed_win_rate": "Victorias observadas"})
+        for column in ("Probabilidad media", "Victorias observadas"):
+            calibration_table[column] = calibration_table[column].map(percent)
+        st.dataframe(calibration_table, hide_index=True, width="stretch", height=400)
+        st.caption("Si el modelo está bien calibrado, los puntos caen sobre la diagonal. Los extremos tienen pocas peleas: "
+                   "el tamaño de cada punto indica cuántas hay en el intervalo.")
 
     st.markdown("### Cruces de estilos")
     view = st.radio("Agrupar combates por", ["Estilo general", "Especialidad"], horizontal=True)
     if view == "Especialidad":
         st.caption("Grappler reúne a luchadores y sometedores. Golpeador KO requiere al menos dos victorias previas por KO/TKO y al menos la mitad de sus victorias por esa vía.")
     common = (specialists if view == "Especialidad" else pairs).sort_values("fights", ascending=False)
-    chart_data = (100 * common.set_index("style_pair")[["finish_rate", "ko_rate", "submission_rate"]]).rename(
-        columns={"finish_rate": "Finalización (%)", "ko_rate": "KO/TKO (%)", "submission_rate": "Sumisión (%)"})
-    st.bar_chart(chart_data, horizontal=True, width="stretch", stack=False)
+    matchup_chart(common)
     table = common[["style_pair", "fights", "first_style_win_rate", "first_style_win_ci_low", "first_style_win_ci_high",
                     "finish_rate", "finish_ci_low", "finish_ci_high", "underdog_win_rate"]].rename(columns={
         "style_pair": "Cruce", "fights": "Peleas", "first_style_win_rate": "Victoria del primer estilo",
@@ -209,7 +267,7 @@ def convergence_chart(outcomes, true_upset):
     line = alt.Chart(frame).mark_line(color=UPSET_COLOR, strokeWidth=2).encode(
         x=x, y="Estimado:Q", tooltip=[alt.Tooltip("Simulaciones:Q", format=","), alt.Tooltip("Estimado:Q", format=".2f")])
     truth = alt.Chart(pd.DataFrame({"y": [100 * true_upset]})).mark_rule(color=FAVORITE_COLOR, strokeDash=[6, 4]).encode(y="y:Q")
-    st.altair_chart((funnel + truth + line).properties(height=300), width="stretch")
+    st.altair_chart(readable(funnel + truth + line, 400), width="stretch")
     st.caption("Línea roja: lo que estima Monte Carlo después de *n* lanzamientos. Línea punteada: la probabilidad real de sorpresa. "
                "Zona sombreada: donde cae el estimado el 95 % de las veces. Con pocas simulaciones el estimado brinca mucho; "
                "con más se estabiliza (ley de los grandes números) y el error baja como 1/√n.")
@@ -218,15 +276,21 @@ def convergence_chart(outcomes, true_upset):
 def history_chart(simulated, observed):
     counts = pd.Series(simulated).value_counts().sort_index().rename_axis("Victorias").reset_index(name="Simulaciones")
     low, high = np.percentile(simulated, [2.5, 97.5])
-    x = alt.X("Victorias:Q", title="Victorias de favoritos en cada historia simulada")
-    span = alt.Chart(pd.DataFrame({"a": [low], "b": [high]})).mark_rect(opacity=.12, color=FAVORITE_COLOR).encode(x="a:Q", x2="b:Q")
-    bars = alt.Chart(counts).mark_bar(color=FAVORITE_COLOR, opacity=.85).encode(
+    # Eje ajustado a la simulación y a la realidad; sin esto Altair arranca en cero y aplasta la campana.
+    lo, hi = min(simulated.min(), observed), max(simulated.max(), observed)
+    pad = max(3, .08 * (hi - lo))
+    scale = alt.Scale(domain=[lo - pad, hi + pad], nice=False, zero=False)
+    x = alt.X("Victorias:Q", title="Victorias de favoritos en cada historia simulada", scale=scale)
+    span = alt.Chart(pd.DataFrame({"a": [low], "b": [high]})).mark_rect(opacity=.14, color=FAVORITE_COLOR).encode(
+        x=alt.X("a:Q", scale=scale), x2="b:Q")
+    bars = alt.Chart(counts).mark_bar(color=FAVORITE_COLOR, opacity=.9).encode(
         x=x, y=alt.Y("Simulaciones:Q", title="Historias simuladas"), tooltip=["Victorias", "Simulaciones"])
-    real = pd.DataFrame({"x": [observed], "label": [f"Realidad: {observed}"]})
-    rule = alt.Chart(real).mark_rule(color=UPSET_COLOR, strokeWidth=3).encode(x="x:Q")
-    text = alt.Chart(real).mark_text(color=UPSET_COLOR, align="right", dx=-6, dy=-6, fontWeight="bold").encode(
-        x="x:Q", y=alt.value(12), text="label:N")
-    st.altair_chart((span + bars + rule + text).properties(height=320), width="stretch")
+    real = pd.DataFrame({"x": [observed], "label": [f"Realidad: {observed:,}"]})
+    rule = alt.Chart(real).mark_rule(color=UPSET_COLOR, strokeWidth=3).encode(x=alt.X("x:Q", scale=scale))
+    align, dx = ("right", -10) if observed > (lo + hi) / 2 else ("left", 10)
+    text = alt.Chart(real).mark_text(color=UPSET_COLOR, align=align, dx=dx, fontWeight="bold", fontSize=16).encode(
+        x=alt.X("x:Q", scale=scale), y=alt.value(16), text="label:N")
+    st.altair_chart(readable(span + bars + rule + text, 400), width="stretch")
 
 
 def display_monte_carlo(fights):
