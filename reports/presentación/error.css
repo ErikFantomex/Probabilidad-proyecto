@@ -1,0 +1,39 @@
+/* =====================================================================
+   Diapositivas 8–9 · Control probabilístico del error
+   (usa .field, .seg y .statrow de ufc.css / estilos.css)
+   ===================================================================== */
+.ctrl-left { position: absolute; left: 70px; top: 165px; width: 770px; bottom: 36px; display: flex; flex-direction: column; gap: 14px; }
+.ctrl-intro { font-size: 24px; line-height: 1.4; color: #3b3b3b; }
+.ctrl-block { padding: 12px 22px 4px; font-size: 20px; }
+.ctrl-block h3 { font: 600 21px var(--font-body); color: var(--rust); }
+.ctrl-block h3 small { font-weight: 500; color: var(--ink-soft); font-size: 17px; }
+.ctrl-block .katex-display { margin: .5em 0; }
+.ctrl-note { font-size: 18px; line-height: 1.45; color: var(--ink-soft); border-left: 4px solid var(--rust); padding-left: 14px; margin-top: auto; }
+.ctrl-right { position: absolute; left: 880px; right: 70px; top: 165px; bottom: 36px; padding: 18px 26px; display: flex; flex-direction: column; gap: 14px; }
+.ctrl-right .field-row .field select { width: 100%; }
+.ctrl-curve { position: relative; height: 250px; }
+.ctrl-curve canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ctrl-right .statrow { grid-template-columns: 1fr 1fr; }
+.ctrl-right .stat { box-shadow: none; border: 1.5px solid #ecebe8; }
+.ctrl-right .stat .v { font-size: 34px; }
+.ctrl-read { font-size: 17px; line-height: 1.45; color: var(--ink-soft); }
+
+.cover-left { position: absolute; left: 70px; top: 165px; width: 470px; bottom: 36px; display: flex; flex-direction: column; gap: 16px; }
+.cover-left p { font-size: 21px; line-height: 1.45; color: #3b3b3b; }
+.cover-left .btn { align-self: flex-start; }
+.cover-left .statrow { grid-template-columns: 1fr 1fr; margin-top: auto; }
+.cover-left .stat .v { font-size: 34px; }
+.cover-right { position: absolute; left: 580px; right: 70px; top: 165px; bottom: 36px; padding: 16px 24px 8px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Diapositiva 8, versión platicada */
+.knobs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.knob { display: flex; gap: 14px; padding: 14px 18px; }
+.knob .kn { flex: none; width: 46px; height: 46px; border-radius: 12px; background: var(--rust-soft); color: var(--rust); display: grid; place-items: center; font: 700 24px var(--font-title); }
+.knob h3 { font: 600 19px var(--font-body); margin-bottom: 4px; }
+.knob p { font-size: 16px; line-height: 1.4; color: var(--ink-soft); }
+.recipe-eq { display: flex; align-items: center; gap: 26px; margin: 6px 0 2px; }
+.eq-big { font-size: 30px; flex: none; }
+.gloss { list-style: none; font-size: 17px; line-height: 1.55; color: var(--ink-soft); }
+.ctrl-block .plain { font-size: 18px; color: var(--ink); margin: 4px 0 8px; }
+.ctrl-block .plain.big { font-size: 21px; }
+.ctrl-block .plain .say { display: block; font-size: 18px; color: var(--ink-soft); margin-top: 2px; }

@@ -1,5 +1,5 @@
 /* =====================================================================
-   Diapositivas 12–16 · Monte Carlo con peleas reales de la UFC
+   Diapositivas 14–18 · Monte Carlo con peleas reales de la UFC
    Adaptación de la pestaña «🎲 Monte Carlo» de app.py (monte_carlo.py).
    Datos: datos_mma.js (generado por exportar_datos.py).
    ===================================================================== */

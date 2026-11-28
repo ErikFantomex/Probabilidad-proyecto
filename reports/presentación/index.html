@@ -12,6 +12,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <link rel="stylesheet" href="estilos.css">
 <link rel="stylesheet" href="ufc.css">
+<link rel="stylesheet" href="error.css">
 </head>
 <body>
 <div id="stage">
@@ -106,11 +107,11 @@
     <header class="slide-head"><h2>Componentes de un algoritmo</h2></header>
     <div class="slide-body">
       <div class="pipeline stagger">
-        <div class="pipe card"><div class="n">1</div><h3>Definir el modelo probabilístico</h3><p>Escribir la cantidad buscada como una esperanza \(\theta=\mathbb{E}[g(X)]\).</p><div class="ex">\((U,V)\) uniforme en \([-1,1]^2\); \(g=\mathbb{1}\{U^2+V^2\le1\}\)</div></div>
-        <div class="pipe card"><div class="n">2</div><h3>Generar números pseudoaleatorios</h3><p>Un generador con semilla produce \(U_1,U_2,\dots\sim\text{Unif}(0,1)\) reproducibles.</p><div class="ex">semilla = 42</div></div>
-        <div class="pipe card"><div class="n">3</div><h3>Simular el experimento <i>N</i> veces</h3><p>Transformar los uniformes en muestras del modelo y evaluar \(g\) en cada una.</p><div class="ex">lanzar \(N\) puntos al cuadrado</div></div>
-        <div class="pipe card"><div class="n">4</div><h3>Agregar los resultados</h3><p>Promediar: \(\hat\theta_N=\frac1N\sum_{i=1}^N g(X_i)\).</p><div class="ex">\(\hat\pi = 4\cdot\frac{\#\text{dentro}}{N}\)</div></div>
-        <div class="pipe card"><div class="n">5</div><h3>Evaluar la incertidumbre</h3><p>Error estándar \(\hat\sigma/\sqrt N\) e intervalo de confianza.</p><div class="ex">\(\hat\pi\pm1.96\cdot\mathrm{EE}\)</div></div>
+        <div class="pipe card"><div class="n">1</div><h3>Definir el modelo probabilístico</h3><p>Convertir la pregunta en el <b>promedio de algo que podamos simular</b>. Cada intento da un número, y el promedio de muchos intentos se acerca a la respuesta.</p><div class="ex">tiro un punto al azar en el cuadrado: anoto <b>1</b> si cae dentro del círculo y <b>0</b> si no. El promedio de esos unos y ceros se acerca a \(\pi/4\).</div></div>
+        <div class="pipe card"><div class="n">2</div><h3>Generar números pseudoaleatorios</h3><p>La computadora genera números “al azar” entre 0 y 1. Con la misma <b>semilla</b> salen los mismos, así cualquiera puede repetir el resultado.</p><div class="ex">semilla = 42</div></div>
+        <div class="pipe card"><div class="n">3</div><h3>Simular el experimento <i>N</i> veces</h3><p>Usar esos números para jugar el experimento muchas veces y anotar qué salió en cada intento.</p><div class="ex">lanzar \(N\) puntos al cuadrado</div></div>
+        <div class="pipe card"><div class="n">4</div><h3>Agregar los resultados</h3><p>Sacar el promedio de todo lo que anotamos: esa es nuestra estimación.</p><div class="ex">π ≈ 4 × (puntos dentro) ÷ N</div></div>
+        <div class="pipe card"><div class="n">5</div><h3>Evaluar la incertidumbre</h3><p>Decir <b>qué tanto nos podemos estar equivocando</b>: el resultado va con su “±”.</p><div class="ex">\(\hat\pi = 3.15 \pm 0.10\)</div></div>
       </div>
     </div>
   </section>
@@ -143,31 +144,45 @@
     </div>
   </section>
 
-  <!-- 8 · Hay de dos sopas -->
-  <section class="slide s-dice" data-title="Hay de dos sopas">
-    <div class="left">
-      <h2>Hay de dos sopas</h2>
-      <p class="event">Se lanzan dos dados. &nbsp;\(A :=\) “la suma es mayor que 10”</p>
-      <div class="opt">
-        <h3><span>1)</span>Método analítico</h3>
-        <div class="analytic">
-          <div class="grid36" id="grid36"></div>
-          <div class="res">\(A=\{(5,6),\,(6,5),\,(6,6)\}\)<br><br>\(P(A)=\dfrac{3}{36}=\dfrac{1}{12}\)<br>\(\phantom{P(A)}\approx 0.0833\)</div>
+  <!-- 8 · Control probabilístico del error -->
+  <section class="slide s-ctrl" data-title="Control probabilístico del error">
+    <header class="slide-head"><h2>Control probabilístico del error</h2><span class="kicker">¿Cuántas simulaciones necesito?</span></header>
+    <div class="ctrl-left">
+      <p class="ctrl-intro">Equivocarnos es inevitable, pero podemos <b>decidir cuánto y qué tan seguido</b>. Eso es controlar el error.</p>
+      <div class="knobs">
+        <div class="knob card"><div class="kn">ε</div><div><h3>¿Cuánto me puedo equivocar?</h3><p>La <b>precisión</b>: por ejemplo, que π salga a menos de 0.01 del valor real.</p></div></div>
+        <div class="knob card"><div class="kn">%</div><div><h3>¿Qué tan seguido acierto?</h3><p>La <b>confianza</b>: con 95 %, acertamos 19 de cada 20 veces.</p></div></div>
+      </div>
+      <div class="ctrl-block card">
+        <h3>La receta, gracias al Teorema del Límite Central</h3>
+        <div class="recipe-eq">
+          <div class="eq-big">\(N \approx \left(\dfrac{z\cdot\sigma}{\varepsilon}\right)^{2}\)</div>
+          <ul class="gloss">
+            <li>\(z\): sale de la confianza (1.96 para 95 %)</li>
+            <li>\(\sigma\): qué tanto brinca cada simulación</li>
+            <li>\(\varepsilon\): el error que estamos dispuestos a aceptar</li>
+          </ul>
         </div>
+        <p class="plain">Más precisión o más confianza ⇒ <b>más simulaciones</b>.</p>
       </div>
-      <div class="opt">
-        <h3><span>2)</span>Método de simulación (Monte Carlo)</h3>
-        <div class="controls"><button class="btn" id="dice-1">Lanzar 1 vez</button><button class="btn" id="dice-100">+100</button><button class="btn" id="dice-10k">+10 000</button><button class="btn" id="dice-reset" style="border-color:#fff;color:#fff;background:transparent">Reiniciar</button></div>
+      <div class="ctrl-block card">
+        <h3>Y al revés: con \(N\) fijo, damos el resultado con su “±”</h3>
+        <p class="plain big">\(\hat\pi = 3.1520 \pm 0.1013\) con \(N = 1{,}000\) <span class="say">→ “π está entre 3.05 y 3.25, con 95 % de confianza”</span></p>
       </div>
+      <p class="ctrl-note">¿Y σ? Casi nunca la conocemos de antemano: hacemos una corrida de prueba, medimos qué tanto brincan los resultados y con eso calculamos \(N\).</p>
     </div>
-    <div class="right" id="dice-right">
-      <div class="sim-panel" id="dice-panel">
-        <h3>Simulación en vivo</h3>
-        <div class="dice-row"><div class="die" id="d1"></div><div class="die" id="d2"></div><div class="sum" id="dsum"></div></div>
-        <div class="readout" id="dice-read"></div>
-        <div class="chart-wrap card" style="padding:0"><canvas id="dice-canvas"></canvas><div class="tip" id="dice-tip"></div></div>
-        <div class="legend"><span><i class="line" style="background:var(--blue)"></i>Estimación \(\hat p_N\)</span><span><i style="background:var(--blue-soft)"></i>IC 95 %</span><span><i class="line" style="background:var(--rust)"></i>Valor exacto 1/12</span></div>
+    <div class="ctrl-right card">
+      <div class="field-row">
+        <label class="field" style="flex:1">¿Qué quiero estimar?<select id="ctrl-prob"></select></label>
+        <label class="field">Precisión ε<select id="ctrl-eps"></select></label>
       </div>
+      <div class="field">Confianza<div class="seg" id="ctrl-conf"></div></div>
+      <div class="ctrl-curve"><canvas id="ctrl-canvas"></canvas></div>
+      <div class="statrow">
+        <div class="stat card"><div class="k">Simulaciones necesarias</div><div class="v t-fav" id="ctrl-n">—</div></div>
+        <div class="stat card"><div class="k">Con el doble de precisión</div><div class="v" id="ctrl-n2">—</div><div class="d">4 veces más</div></div>
+      </div>
+      <p class="ctrl-read" id="ctrl-read"></p>
     </div>
   </section>
 
@@ -197,7 +212,57 @@
     </div>
   </section>
 
-  <!-- 10 · En resumen -->
+  <!-- 10 · Cobertura de los intervalos -->
+  <section class="slide s-cover" data-title="¿El intervalo cumple lo que promete?">
+    <header class="slide-head"><h2>¿El intervalo cumple lo que promete?</h2><span class="kicker">Cobertura</span></header>
+    <div class="cover-left">
+      <p>Repetimos <b>100 veces</b> el experimento de estimar \(\pi\), y en cada uno construimos su intervalo \(\hat\pi\pm z\,\hat\sigma/\sqrt N\).</p>
+      <p>“95 % de confianza” significa que <b>cerca de 95 de cada 100 intervalos atrapan a \(\pi\)</b>. Ese es el control: sabemos con qué frecuencia nos equivocamos.</p>
+      <div class="field-row">
+        <label class="field">Puntos por experimento<select id="cov-n"></select></label>
+      </div>
+      <div class="field">Confianza<div class="seg" id="cov-conf"></div></div>
+      <button class="btn solid" id="cov-run">Repetir 100 experimentos</button>
+      <div class="statrow">
+        <div class="stat card"><div class="k">Atrapan a <span style="text-transform:none">π</span></div><div class="v" id="cov-hit">—</div><div class="d">de 100 en esta tanda</div></div>
+        <div class="stat card"><div class="k">Acumulado</div><div class="v" id="cov-acc">—</div><div class="d" id="cov-acc-d"></div></div>
+      </div>
+    </div>
+    <div class="cover-right card">
+      <div class="legend"><span><i class="line" style="background:var(--blue)"></i>Intervalo que atrapa a π</span><span><i class="line" style="background:var(--rust);height:4px"></i>Intervalo que falla</span><span><i class="line" style="background:var(--ink)"></i>π real</span></div>
+      <div class="chart-wrap"><canvas id="cov-canvas"></canvas><div class="tip" id="cov-tip"></div></div>
+    </div>
+  </section>
+
+  <!-- 11 · Hay de dos sopas -->
+  <section class="slide s-dice" data-title="Hay de dos sopas">
+    <div class="left">
+      <h2>Hay de dos sopas</h2>
+      <p class="event">Se lanzan dos dados. &nbsp;\(A :=\) “la suma es mayor que 10”</p>
+      <div class="opt">
+        <h3><span>1)</span>Método analítico</h3>
+        <div class="analytic">
+          <div class="grid36" id="grid36"></div>
+          <div class="res">\(A=\{(5,6),\,(6,5),\,(6,6)\}\)<br><br>\(P(A)=\dfrac{3}{36}=\dfrac{1}{12}\)<br>\(\phantom{P(A)}\approx 0.0833\)</div>
+        </div>
+      </div>
+      <div class="opt">
+        <h3><span>2)</span>Método de simulación (Monte Carlo)</h3>
+        <div class="controls"><button class="btn" id="dice-1">Lanzar 1 vez</button><button class="btn" id="dice-100">+100</button><button class="btn" id="dice-10k">+10 000</button><button class="btn" id="dice-reset" style="border-color:#fff;color:#fff;background:transparent">Reiniciar</button></div>
+      </div>
+    </div>
+    <div class="right" id="dice-right">
+      <div class="sim-panel" id="dice-panel">
+        <h3>Simulación en vivo</h3>
+        <div class="dice-row"><div class="die" id="d1"></div><div class="die" id="d2"></div><div class="sum" id="dsum"></div></div>
+        <div class="readout" id="dice-read"></div>
+        <div class="chart-wrap card" style="padding:0"><canvas id="dice-canvas"></canvas><div class="tip" id="dice-tip"></div></div>
+        <div class="legend"><span><i class="line" style="background:var(--blue)"></i>Estimación \(\hat p_N\)</span><span><i style="background:var(--blue-soft)"></i>IC 95 %</span><span><i class="line" style="background:var(--rust)"></i>Valor exacto 1/12</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · En resumen -->
   <section class="slide" data-title="En resumen">
     <header class="slide-head"><h2>En resumen:</h2></header>
     <div class="meme">
@@ -212,7 +277,7 @@
     </div>
   </section>
 
-  <!-- 11 · Genética y estadística -->
+  <!-- 13 · Genética y estadística -->
   <section class="slide" data-title="Genética y estadística">
     <header class="slide-head"><h2>Genética y estadística</h2><span class="kicker">Nuestro caso: MMA</span></header>
     <div class="slide-body">
@@ -224,7 +289,7 @@
     </div>
   </section>
 
-  <!-- 12 · Monte Carlo en la UFC -->
+  <!-- 14 · Monte Carlo en la UFC -->
   <section class="slide s-ufc" data-title="Monte Carlo en la UFC">
     <header class="slide-head"><h2>Cuando no puedes repetir la pelea…</h2><span class="kicker">…la repite la computadora</span></header>
     <div class="slide-body">
@@ -245,7 +310,7 @@
     </div>
   </section>
 
-  <!-- 13 · Una pelea, muchas veces -->
+  <!-- 15 · Una pelea, muchas veces -->
   <section class="slide s-one" data-title="Una pelea, muchas veces">
     <header class="slide-head"><h2>Una pelea, muchas veces</h2><span class="kicker">Datos reales de la UFC</span></header>
     <div class="one-left">
@@ -273,7 +338,7 @@
     </div>
   </section>
 
-  <!-- 14 · Historias alternativas -->
+  <!-- 16 · Historias alternativas -->
   <section class="slide s-hist" data-title="Historias alternativas de la UFC">
     <header class="slide-head"><h2>Miles de historias alternativas de la UFC</h2></header>
     <div class="hist-left">
@@ -288,7 +353,7 @@
     </div>
   </section>
 
-  <!-- 15 · ¿Aciertan las cuotas? -->
+  <!-- 17 · ¿Aciertan las cuotas? -->
   <section class="slide s-test" data-title="¿Aciertan las cuotas?">
     <header class="slide-head"><h2>¿Aciertan las cuotas?</h2><span class="kicker">Prueba de hipótesis por simulación</span></header>
     <div class="test-body">
@@ -312,7 +377,7 @@
     </div>
   </section>
 
-  <!-- 16 · Conclusiones -->
+  <!-- 18 · Conclusiones -->
   <section class="slide s-concl" data-title="Conclusiones">
     <header class="slide-head"><h2>¿Qué nos dijo Monte Carlo?</h2><span class="kicker" id="c-kicker"></span></header>
     <div class="concl-chart card">
@@ -336,6 +401,7 @@
 
 <script src="datos_mma.js"></script>
 <script src="presentacion.js"></script>
+<script src="error.js"></script>
 <script src="ufc.js"></script>
 </body>
 </html>
