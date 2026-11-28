@@ -1,0 +1,116 @@
+/* =====================================================================
+   Diapositivas 12–16 · Monte Carlo con peleas de la UFC
+   ===================================================================== */
+.t-fav { color: var(--blue); }
+.t-dog { color: var(--rust); }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 18px; font-weight: 600; color: var(--ink-soft); }
+.field.inline { flex-direction: row; align-items: center; gap: 10px; }
+.field select, .field input[type=number] {
+  font: 500 20px var(--font-body); color: var(--ink);
+  padding: 9px 12px; border-radius: 12px; border: 1.5px solid var(--rule); background: var(--white);
+}
+.field input[type=number] { width: 120px; }
+.field input[type=range] { accent-color: var(--rust); width: 100%; }
+.field-row { display: flex; gap: 16px; align-items: flex-end; }
+.stat .d { font-size: 15px; color: var(--ink-soft); margin-top: 2px; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--white); border: 1.5px solid var(--rule); border-radius: 999px; padding: 4px; gap: 2px; align-self: flex-start; }
+.seg button {
+  font: 600 18px var(--font-body); color: var(--ink-soft);
+  border: none; background: transparent; padding: 9px 16px; border-radius: 999px; cursor: pointer;
+}
+.seg button:hover { background: var(--rust-soft); color: var(--rust); }
+.seg button.on { background: var(--rust); color: var(--white); }
+.nodata { position: absolute; left: 70px; right: 70px; top: 300px; padding: 30px; font-size: 24px; text-align: center; z-index: 3; }
+
+/* 12 · receta + sorteo de u */
+.lead-sm { font-size: 30px; line-height: 1.38; color: #3b3b3b; max-width: 1400px; }
+.recipe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin: 30px 0 26px; }
+.recipe > div { display: flex; gap: 18px; padding: 24px 26px; }
+.recipe .n {
+  flex: none; width: 54px; height: 54px; border-radius: 50%;
+  background: var(--rust); color: #fff; font: 700 28px/54px var(--font-title); text-align: center;
+}
+.recipe h3 { font: 600 25px var(--font-body); margin-bottom: 6px; }
+.recipe p { font-size: 19px; line-height: 1.42; color: var(--ink-soft); }
+.ubar { padding: 22px 34px 20px; }
+.ubar-head { display: flex; justify-content: space-between; align-items: center; font-size: 24px; font-weight: 600; margin-bottom: 34px; }
+.ubar-track { position: relative; display: flex; height: 58px; border-radius: 12px; }
+.ubar-fav, .ubar-dog { display: grid; place-items: center; font: 600 19px var(--font-body); color: #fff; }
+.ubar-fav { background: var(--blue); border-radius: 12px 0 0 12px; }
+.ubar-dog { flex: 1; background: var(--rust); border-radius: 0 12px 12px 0; font-size: 15px; }
+.ubar-mark { position: absolute; top: -10px; bottom: -10px; width: 4px; margin-left: -2px; background: var(--ink); border-radius: 2px; animation: drop .35s ease; }
+.ubar-mark span {
+  position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, -4px);
+  font: 700 16px var(--font-body); white-space: nowrap; background: var(--ink); color: #fff; padding: 3px 8px; border-radius: 6px;
+}
+.ubar-mark.dog { background: var(--gold); }
+.ubar-mark.dog span { background: var(--gold); color: var(--ink); }
+.ubar-mark.old { opacity: .25; width: 3px; }
+.ubar-mark.old span { display: none; }
+@keyframes drop { from { transform: translateY(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ubar-scale { position: relative; height: 30px; font-size: 16px; color: var(--ink-soft); }
+.ubar-scale span { position: absolute; top: 8px; transform: translateX(-50%); white-space: nowrap; }
+.ubar-scale span:first-child { transform: none; }
+.ubar-scale span:last-child { transform: translateX(-100%); }
+.ubar .readout { font-size: 21px; margin-top: 6px; }
+
+/* 13 · una pelea, muchas veces */
+.one-left { position: absolute; left: 70px; top: 170px; width: 560px; bottom: 40px; display: flex; flex-direction: column; gap: 18px; }
+.one-left .odds { font-size: 21px; line-height: 1.45; color: var(--ink); }
+.one-left .statrow { grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.one-note { margin-top: auto; font-size: 18px; line-height: 1.45; color: var(--ink-soft); border-left: 4px solid var(--rust); padding-left: 14px; }
+.one-right .legend { flex-wrap: wrap; row-gap: 4px; }
+.one-left .stat .k { font-size: 13px; letter-spacing: 1px; min-height: 34px; }
+.one-left .stat .v { font-size: 30px; }
+.one-right { position: absolute; left: 670px; right: 70px; top: 170px; bottom: 40px; padding: 20px 26px; display: flex; flex-direction: column; gap: 10px; }
+.coins-title { font-size: 19px; color: var(--ink-soft); }
+.coins { display: flex; flex-wrap: wrap; gap: 3px; min-height: 40px; }
+.coins span { width: 15px; height: 15px; border-radius: 3px; background: var(--blue); }
+.coins span.u { background: var(--rust); }
+
+/* 14 · historias alternativas */
+.hist-left { position: absolute; left: 70px; top: 175px; width: 470px; bottom: 40px; display: flex; flex-direction: column; gap: 16px; }
+.hist-left p { font-size: 22px; line-height: 1.45; color: #3b3b3b; }
+.hist-left .seg button { padding: 8px 9px; font-size: 15px; }
+.hist-left .seg { flex-wrap: nowrap; }
+.one-history { padding: 18px 22px; margin-top: auto; }
+.one-history .k { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--ink-soft); }
+.one-history .cmp { display: flex; gap: 26px; margin: 8px 0 4px; }
+.one-history .cmp > div { font-size: 16px; color: var(--ink-soft); line-height: 1.3; }
+.one-history .big { display: block; font: 700 44px/1.1 var(--font-title); color: var(--ink); }
+.one-history .big.t-fav { color: var(--blue); }
+.one-history .d { font-size: 16px; color: var(--ink-soft); }
+.hist-right { position: absolute; left: 580px; right: 70px; top: 175px; bottom: 40px; padding: 20px 26px; display: flex; flex-direction: column; gap: 12px; }
+.hist-top { display: flex; justify-content: space-between; align-items: center; font-size: 20px; color: var(--ink-soft); }
+.hist-top .btn { padding: 8px 18px; font-size: 18px; }
+table.fights { width: 100%; border-collapse: collapse; font-size: 18px; }
+table.fights th { text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); padding: 8px 10px; border-bottom: 2px solid var(--rule); }
+table.fights td { padding: 10px 10px; border-bottom: 1px solid #ecebe8; white-space: nowrap; max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+table.fights td.num { font-variant-numeric: tabular-nums; text-align: right; }
+table.fights th:nth-child(4), table.fights th:nth-child(5) { text-align: right; }
+.pill { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 15px; font-weight: 700; }
+.pill.fav { background: var(--blue-soft); color: var(--blue); }
+.pill.dog { background: var(--rust-soft); color: var(--rust); }
+
+/* 15 · prueba de calibración */
+.test-body { position: absolute; left: 70px; right: 70px; top: 165px; bottom: 62px; display: flex; flex-direction: column; gap: 14px; }
+.test-controls { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.test-controls .btn { padding: 8px 16px; }
+.statrow.four { grid-template-columns: repeat(4, 1fr); }
+.statrow.four .stat .v { font-size: 34px; }
+.test-chart { flex: 1; min-height: 0; padding: 14px 22px 8px; display: flex; flex-direction: column; gap: 6px; }
+.progress-txt { margin-left: auto; font-style: italic; }
+.verdict { font-size: 20px; line-height: 1.4; padding: 0 18px; min-height: 30px; border-radius: 12px; }
+.verdict.ok, .verdict.warn { padding: 12px 18px; }
+.verdict.ok { background: var(--blue-soft); color: #1f4866; }
+.verdict.warn { background: var(--rust-soft); color: #7a2a10; }
+
+/* 16 · conclusiones */
+.concl-chart { position: absolute; left: 70px; top: 170px; width: 900px; bottom: 40px; padding: 18px 24px 8px; display: flex; flex-direction: column; gap: 8px; }
+.concl-notes { position: absolute; left: 1000px; right: 70px; top: 170px; bottom: 40px; display: flex; flex-direction: column; gap: 14px; }
+.note { padding: 16px 20px; border-left: 6px solid var(--rule); }
+.note.ok { border-left-color: var(--blue); }
+.note.warn { border-left-color: var(--rust); }
+.note h3 { font: 600 20px var(--font-body); margin-bottom: 4px; }
+.note p { font-size: 17px; line-height: 1.42; color: var(--ink-soft); }
+.note.muted { background: transparent; box-shadow: none; }

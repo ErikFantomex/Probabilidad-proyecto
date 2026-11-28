@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Método de Monte Carlo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Inter:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="estilos.css">
+<link rel="stylesheet" href="ufc.css">
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1 · Portada -->
+  <section class="slide s-title" data-title="Portada">
+    <div class="cover-img">
+      <img src="img/portada.png" alt="Nube de puntos aleatorios que forman una campana de Gauss">
+    </div>
+    <h1>Método de Monte Carlo y<br>control probabilístico del error</h1>
+    <footer>
+      <span>Probabilidad · Matemáticas para ciencia de datos 2026</span>
+      <span class="authors"><span>Carlos Sotomayor</span><span>Horacio Araiza</span></span>
+    </footer>
+  </section>
+
+  <!-- 2 · ¿Qué es? -->
+  <section class="slide s-what" data-title="¿Qué es?">
+    <header class="slide-head"><h2>¿Qué es?</h2></header>
+    <div class="slide-body">
+      <blockquote>Si un problema es difícil de resolver analíticamente, podemos simularlo miles de veces y estudiar estadísticamente sus resultados.</blockquote>
+      <div class="loop frag">
+        <div class="step card"><div class="ic">1</div><h4>Simular</h4><p>Repetimos el experimento aleatorio muchas veces en la computadora</p></div>
+        <div class="arrow">→</div>
+        <div class="step card"><div class="ic">2</div><h4>Promediar</h4><p>La media de los resultados estima la cantidad que buscamos</p></div>
+        <div class="arrow">→</div>
+        <div class="step card"><div class="ic">3</div><h4>Medir el error</h4><p>La probabilidad nos dice qué tan lejos podemos estar</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Teorema del Límite Central -->
+  <section class="slide s-clt" data-title="Teorema del Límite Central">
+    <p class="lead">Monte Carlo tiene una aproximación del error absoluto que se comporta como \(\sigma/\sqrt{N}\) en virtud del <b>Teorema del Límite Central</b></p>
+    <div class="formula card">
+      <div>$$Z_n=\frac{\left(\frac{1}{n}\sum_{i=1}^{n}X_i\right)-\mu}{\sqrt{\sigma^2/n}}$$</div>
+      <div class="lim">$$Z_n\;\xrightarrow[\;n\to\infty\;]{d}\;\mathcal{N}(0,1)$$</div>
+      <div class="note">Sin importar la forma de la distribución de las \(X_i\),<br>el promedio se distribuye aproximadamente normal con desviación \(\sigma/\sqrt{n}\).</div>
+    </div>
+    <div class="demo card">
+      <div class="demo-top">
+        <label>Distribución de \(X_i\)
+          <select id="clt-dist">
+            <option value="unif">Uniforme(0,1)</option>
+            <option value="exp" selected>Exponencial(1)</option>
+            <option value="dado">Dado justo</option>
+            <option value="bern">Bernoulli(0.1)</option>
+          </select>
+        </label>
+        <label>Tamaño de muestra \(n\) = <b id="clt-n-lbl">5</b>
+          <input id="clt-n" type="range" min="1" max="100" value="5">
+        </label>
+        <button class="btn solid" id="clt-run">Simular 5 000 medias</button>
+      </div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>Medias simuladas</span><span><i class="line" style="background:var(--rust)"></i>Normal \(\mathcal{N}(\mu,\sigma^2/n)\)</span></div>
+      <div class="chart-wrap"><canvas id="clt-canvas"></canvas><div class="tip" id="clt-tip"></div></div>
+      <div class="readout" id="clt-read"></div>
+    </div>
+  </section>
+
+  <!-- 4 · Propiedades estadísticas -->
+  <section class="slide" data-title="Propiedades estadísticas">
+    <header class="slide-head"><h2>Propiedades estadísticas</h2><span class="kicker">del estimador \(\hat\theta_N\)</span></header>
+    <div class="slide-body">
+      <div class="props stagger">
+        <div class="prop card"><span class="num">1</span>
+          <h3>Insesgamiento</h3>
+          <div class="math">\(\mathbb{E}\big[\hat\theta_N\big]=\theta\)</div>
+          <p>En promedio, el estimador acierta: no se inclina sistemáticamente hacia arriba ni hacia abajo.</p>
+        </div>
+        <div class="prop card"><span class="num">2</span>
+          <h3>Consistencia</h3>
+          <div class="math">\(\hat\theta_N \xrightarrow{\;c.s.\;} \theta\) cuando \(N\to\infty\)</div>
+          <p>Por la Ley de los Grandes Números, con suficientes simulaciones la estimación se acerca al valor real.</p>
+        </div>
+        <div class="prop card"><span class="num">3</span>
+          <h3>Tasa de convergencia</h3>
+          <div class="math">\(\text{error}\approx \dfrac{\sigma}{\sqrt N}=O\!\left(N^{-1/2}\right)\)</div>
+          <p>Para reducir el error 10 veces se necesitan <b>100 veces</b> más simulaciones, sin importar la dimensión del problema.</p>
+        </div>
+        <div class="prop card"><span class="num">4</span>
+          <h3>Intervalos de confianza</h3>
+          <div class="math">\(\hat\theta_N \pm z_{\alpha/2}\,\dfrac{\hat\sigma}{\sqrt N}\)</div>
+          <p>Gracias al TLC no solo damos un número: damos un rango con 95&nbsp;% de confianza (\(z=1.96\)).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · Componentes de un algoritmo -->
+  <section class="slide" data-title="Componentes de un algoritmo">
+    <header class="slide-head"><h2>Componentes de un algoritmo</h2></header>
+    <div class="slide-body">
+      <div class="pipeline stagger">
+        <div class="pipe card"><div class="n">1</div><h3>Definir el modelo probabilístico</h3><p>Escribir la cantidad buscada como una esperanza \(\theta=\mathbb{E}[g(X)]\).</p><div class="ex">\((U,V)\) uniforme en \([-1,1]^2\); \(g=\mathbb{1}\{U^2+V^2\le1\}\)</div></div>
+        <div class="pipe card"><div class="n">2</div><h3>Generar números pseudoaleatorios</h3><p>Un generador con semilla produce \(U_1,U_2,\dots\sim\text{Unif}(0,1)\) reproducibles.</p><div class="ex">semilla = 42</div></div>
+        <div class="pipe card"><div class="n">3</div><h3>Simular el experimento <i>N</i> veces</h3><p>Transformar los uniformes en muestras del modelo y evaluar \(g\) en cada una.</p><div class="ex">lanzar \(N\) puntos al cuadrado</div></div>
+        <div class="pipe card"><div class="n">4</div><h3>Agregar los resultados</h3><p>Promediar: \(\hat\theta_N=\frac1N\sum_{i=1}^N g(X_i)\).</p><div class="ex">\(\hat\pi = 4\cdot\frac{\#\text{dentro}}{N}\)</div></div>
+        <div class="pipe card"><div class="n">5</div><h3>Evaluar la incertidumbre</h3><p>Error estándar \(\hat\sigma/\sqrt N\) e intervalo de confianza.</p><div class="ex">\(\hat\pi\pm1.96\cdot\mathrm{EE}\)</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · Limitaciones -->
+  <section class="slide" data-title="Limitaciones del algoritmo">
+    <header class="slide-head"><h2>Limitaciones del algoritmo</h2></header>
+    <div class="slide-body">
+      <div class="limits stagger">
+        <div class="limit card"><div class="ic">√</div><h3>Convergencia lenta</h3><p>El error baja como \(1/\sqrt N\): cada dígito extra de precisión cuesta 100 veces más simulaciones.</p></div>
+        <div class="limit card"><div class="ic">σ²</div><h3>Depende de la varianza</h3><p>Si \(g(X)\) varía mucho, el error es grande; se necesitan técnicas de reducción de varianza.</p></div>
+        <div class="limit card"><div class="ic">ε</div><h3>Eventos raros</h3><p>Para estimar probabilidades muy pequeñas casi ninguna simulación “acierta” y el error relativo explota.</p></div>
+        <div class="limit card"><div class="ic">U</div><h3>Calidad del generador</h3><p>Los números son <i>pseudo</i>aleatorios: un mal generador introduce correlaciones y sesgo.</p></div>
+        <div class="limit card"><div class="ic">M</div><h3>El modelo manda</h3><p>Simular perfecto un modelo equivocado da una respuesta precisa… pero incorrecta.</p></div>
+        <div class="limit card"><div class="ic">±</div><h3>Respuesta aproximada</h3><p>Siempre hay ruido: cada corrida da un número distinto, por eso reportamos intervalos.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · Error σ/√N en acción -->
+  <section class="slide s-conv" data-title="El error en acción">
+    <header class="slide-head"><h2>El error σ/√N en acción</h2></header>
+    <p class="lead">Estimamos \(\pi\) muchas veces con distintos \(N\). En escala log–log el error cae con pendiente \(-\tfrac12\).</p>
+    <div class="demo card">
+      <div class="demo-top">
+        <div class="legend"><span><i style="background:var(--blue);border-radius:50%;width:12px;height:12px"></i>|error| de cada corrida</span><span><i class="line" style="background:var(--rust)"></i>Teórico \(\sigma/\sqrt N\)</span></div>
+        <div class="controls"><button class="btn solid" id="conv-run">Correr 30 réplicas por N</button><button class="btn ghost" id="conv-clear">Limpiar</button></div>
+      </div>
+      <div class="chart-wrap"><canvas id="conv-canvas"></canvas><div class="tip" id="conv-tip"></div></div>
+    </div>
+  </section>
+
+  <!-- 8 · Hay de dos sopas -->
+  <section class="slide s-dice" data-title="Hay de dos sopas">
+    <div class="left">
+      <h2>Hay de dos sopas</h2>
+      <p class="event">Se lanzan dos dados. &nbsp;\(A :=\) “la suma es mayor que 10”</p>
+      <div class="opt">
+        <h3><span>1)</span>Método analítico</h3>
+        <div class="analytic">
+          <div class="grid36" id="grid36"></div>
+          <div class="res">\(A=\{(5,6),\,(6,5),\,(6,6)\}\)<br><br>\(P(A)=\dfrac{3}{36}=\dfrac{1}{12}\)<br>\(\phantom{P(A)}\approx 0.0833\)</div>
+        </div>
+      </div>
+      <div class="opt">
+        <h3><span>2)</span>Método de simulación (Monte Carlo)</h3>
+        <div class="controls"><button class="btn" id="dice-1">Lanzar 1 vez</button><button class="btn" id="dice-100">+100</button><button class="btn" id="dice-10k">+10 000</button><button class="btn" id="dice-reset" style="border-color:#fff;color:#fff;background:transparent">Reiniciar</button></div>
+      </div>
+    </div>
+    <div class="right" id="dice-right">
+      <div class="sim-panel" id="dice-panel">
+        <h3>Simulación en vivo</h3>
+        <div class="dice-row"><div class="die" id="d1"></div><div class="die" id="d2"></div><div class="sum" id="dsum"></div></div>
+        <div class="readout" id="dice-read"></div>
+        <div class="chart-wrap card" style="padding:0"><canvas id="dice-canvas"></canvas><div class="tip" id="dice-tip"></div></div>
+        <div class="legend"><span><i class="line" style="background:var(--blue)"></i>Estimación \(\hat p_N\)</span><span><i style="background:var(--blue-soft)"></i>IC 95 %</span><span><i class="line" style="background:var(--rust)"></i>Valor exacto 1/12</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · Ejemplo de la circunferencia -->
+  <section class="slide s-pi" data-title="Ejemplo de la circunferencia">
+    <header class="slide-head"><h2>Ejemplo de la circunferencia</h2></header>
+    <div class="board card"><canvas id="pi-canvas"></canvas></div>
+    <div class="side">
+      <div class="eq">\(\dfrac{\text{área círculo}}{\text{área cuadrado}}=\dfrac{\pi}{4}\;\Rightarrow\;\hat\pi=4\cdot\dfrac{\#\text{dentro}}{N}\)</div>
+      <div class="big-est"><span id="pi-est">—</span> <small id="pi-ci"></small></div>
+      <div class="statrow">
+        <div class="stat card"><div class="k">Puntos N</div><div class="v" id="pi-n">0</div></div>
+        <div class="stat card"><div class="k">Dentro</div><div class="v" id="pi-in" style="color:var(--blue)">0</div></div>
+        <div class="stat card"><div class="k">|error|</div><div class="v" id="pi-err">—</div></div>
+      </div>
+      <div class="controls">
+        <button class="btn" data-add="100">+100</button>
+        <button class="btn" data-add="1000">+1 000</button>
+        <button class="btn" data-add="10000">+10 000</button>
+        <button class="btn solid" id="pi-play">▶ Animar</button>
+        <button class="btn ghost" id="pi-reset">Reiniciar</button>
+      </div>
+      <div class="trace card">
+        <div class="legend"><span><i class="line" style="background:var(--blue)"></i>\(\hat\pi_N\)</span><span><i style="background:var(--blue-soft)"></i>IC 95 %</span><span><i class="line" style="background:var(--rust)"></i>\(\pi\)</span></div>
+        <div class="chart-wrap"><canvas id="pi-trace"></canvas><div class="tip" id="pi-tip"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · En resumen -->
+  <section class="slide" data-title="En resumen">
+    <header class="slide-head"><h2>En resumen:</h2></header>
+    <div class="meme">
+      <div class="meme-row">
+        <div class="drake top" role="img" aria-label="Drake rechaza"></div>
+        <div class="cell" style="background-image:url('img/meme-teoria.png')"><span>Demostrar todo analíticamente</span></div>
+      </div>
+      <div class="meme-row frag">
+        <div class="drake bottom" role="img" aria-label="Drake aprueba"></div>
+        <div class="cell" style="background-image:url('img/meme-casino.png')"><span>Tirar los dados 10 000 veces y promediar</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · Genética y estadística -->
+  <section class="slide" data-title="Genética y estadística">
+    <header class="slide-head"><h2>Genética y estadística</h2><span class="kicker">Nuestro caso: MMA</span></header>
+    <div class="slide-body">
+      <ul class="qs stagger">
+        <li class="card"><b>?</b>¿Qué tanto depende un humano de la suerte para poder dedicarse al negocio de la pelea?</li>
+        <li class="card"><b>?</b>¿Cómo cambia la dinámica de poder entre divisiones?</li>
+        <li class="card"><b>?</b>¿Por qué las MMA han demostrado ser imposibles de predecir con los métodos estadísticos tradicionales?</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 12 · Monte Carlo en la UFC -->
+  <section class="slide s-ufc" data-title="Monte Carlo en la UFC">
+    <header class="slide-head"><h2>Cuando no puedes repetir la pelea…</h2><span class="kicker">…la repite la computadora</span></header>
+    <div class="slide-body">
+      <p class="lead-sm">Cada pelea ocurre <b>una sola vez</b>: con un resultado no sabemos si la cuota estaba bien o si fue suerte. Monte Carlo imita el azar con números aleatorios, repite el experimento miles de veces y cuenta qué pasa.</p>
+      <div class="recipe stagger">
+        <div class="card"><div class="n">1</div><div><h3>Modelo del azar</h3><p>El favorito gana con probabilidad \(p\): la cuota de apertura sin margen de la casa de apuestas.</p></div></div>
+        <div class="card"><div class="n">2</div><div><h3>Lanzar</h3><p>Se sortea \(u\sim\text{Unif}(0,1)\). Si \(u&lt;p\) gana el favorito; si no, hay <b>sorpresa</b>.</p></div></div>
+        <div class="card"><div class="n">3</div><div><h3>Repetir y contar</h3><p>Miles de lanzamientos muestran qué resultados son normales y cuáles son raros.</p></div></div>
+      </div>
+      <div class="ubar card">
+        <div class="ubar-head"><span id="u-title">Gable Steveson vs. Sean Sharaf · \(p = 0.904\)</span><button class="btn solid" id="u-roll">Sortear \(u\)</button></div>
+        <div class="ubar-track" id="u-track">
+          <div class="ubar-fav" id="u-fav">gana el favorito</div><div class="ubar-dog">sorpresa</div>
+        </div>
+        <div class="ubar-scale"><span style="left:0">0</span><span id="u-p" style="left:90.4%">p</span><span style="left:100%">1</span></div>
+        <div class="readout" id="u-read">Pulsa «Sortear u» para jugar la pelea una vez.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · Una pelea, muchas veces -->
+  <section class="slide s-one" data-title="Una pelea, muchas veces">
+    <header class="slide-head"><h2>Una pelea, muchas veces</h2><span class="kicker">Datos reales de la UFC</span></header>
+    <div class="one-left">
+      <label class="field">Pelea<select id="mc-fight"></select></label>
+      <label class="field" id="mc-custom">Probabilidad del favorito: <b id="mc-p-lbl">75 %</b><input type="range" id="mc-p" min="50" max="99" value="75"></label>
+      <div class="field-row">
+        <label class="field">Simulaciones<select id="mc-n"></select></label>
+        <label class="field">Semilla<input type="number" id="mc-seed" value="7" min="0"></label>
+        <button class="btn" id="mc-reroll" title="Otra semilla">🎲 Volver a lanzar</button>
+      </div>
+      <p class="odds" id="mc-odds"></p>
+      <div class="statrow">
+        <div class="stat card"><div class="k" id="mc-k1">Sorpresas</div><div class="v" id="mc-v1">—</div></div>
+        <div class="stat card"><div class="k">Estimado MC</div><div class="v" id="mc-v2">—</div><div class="d" id="mc-d2"></div></div>
+        <div class="stat card"><div class="k">Error estándar</div><div class="v" id="mc-v3">—</div><div class="d">\(\sqrt{\hat p(1-\hat p)/n}\)</div></div>
+      </div>
+      <p class="one-note">Con pocas simulaciones el estimado brinca mucho; con más se estabiliza (ley de los grandes números) y el error baja como \(1/\sqrt{n}\).</p>
+    </div>
+    <div class="one-right card">
+      <div class="coins-title" id="mc-coins-title"></div>
+      <div class="coins" id="mc-coins"></div>
+      <div class="legend" id="mc-coin-legend"></div>
+      <div class="chart-wrap"><canvas id="mc-conv"></canvas><div class="tip" id="mc-tip"></div></div>
+      <div class="legend"><span><i class="line" style="background:var(--rust)"></i>Estimado Monte Carlo</span><span><i style="background:var(--blue-soft)"></i>Zona donde cae el 95 %</span><span><i class="line" style="background:var(--blue)"></i>Probabilidad real</span></div>
+    </div>
+  </section>
+
+  <!-- 14 · Historias alternativas -->
+  <section class="slide s-hist" data-title="Historias alternativas de la UFC">
+    <header class="slide-head"><h2>Miles de historias alternativas de la UFC</h2></header>
+    <div class="hist-left">
+      <p>Ahora la pregunta es más grande: <b>¿las cuotas aciertan con los favoritos?</b></p>
+      <p>Suponemos que sí (<b>hipótesis nula</b>) y volvemos a jugar <i>todas</i> las peleas del grupo, cada una con su propia moneda cargada. Cada repetición es una <b>historia alternativa</b> de la UFC.</p>
+      <div class="field">Favoritos con probabilidad de…<div class="seg band-seg"></div></div>
+      <div class="one-history card" id="h-one"></div>
+    </div>
+    <div class="hist-right card">
+      <div class="hist-top"><span id="h-caption"></span><button class="btn" id="h-resample">🎲 Otra muestra</button></div>
+      <table class="fights" id="h-table"></table>
+    </div>
+  </section>
+
+  <!-- 15 · ¿Aciertan las cuotas? -->
+  <section class="slide s-test" data-title="¿Aciertan las cuotas?">
+    <header class="slide-head"><h2>¿Aciertan las cuotas?</h2><span class="kicker">Prueba de hipótesis por simulación</span></header>
+    <div class="test-body">
+      <div class="test-controls">
+        <div class="seg band-seg"></div>
+        <label class="field inline">Historias<select id="t-n"></select></label>
+        <label class="field inline">Semilla<input type="number" id="t-seed" value="7" min="0"></label>
+        <button class="btn" id="t-reroll">🎲</button>
+      </div>
+      <div class="statrow four">
+        <div class="stat card"><div class="k">Victorias reales de favoritos</div><div class="v" id="t-obs">—</div><div class="d" id="t-obs-d"></div></div>
+        <div class="stat card"><div class="k">Esperadas si la cuota acierta</div><div class="v" id="t-exp">—</div><div class="d" id="t-exp-d"></div></div>
+        <div class="stat card"><div class="k">Rango normal (95 %)</div><div class="v" id="t-rng">—</div></div>
+        <div class="stat card"><div class="k">Valor p</div><div class="v" id="t-p">—</div><div class="d" id="t-p-d">bilateral</div></div>
+      </div>
+      <div class="test-chart card">
+        <div class="legend"><span><i style="background:var(--blue)"></i>Historias simuladas</span><span><i style="background:var(--blue-soft)"></i>Rango del 95 %</span><span><i class="line" style="background:var(--rust)"></i>Realidad</span><span id="t-progress" class="progress-txt"></span></div>
+        <div class="chart-wrap"><canvas id="t-canvas"></canvas><div class="tip" id="t-tip"></div></div>
+      </div>
+      <div class="verdict" id="t-verdict"></div>
+    </div>
+  </section>
+
+  <!-- 16 · Conclusiones -->
+  <section class="slide s-concl" data-title="Conclusiones">
+    <header class="slide-head"><h2>¿Qué nos dijo Monte Carlo?</h2><span class="kicker" id="c-kicker"></span></header>
+    <div class="concl-chart card">
+      <div class="legend"><span><i style="background:var(--blue-soft);border:1.5px solid var(--blue)"></i>Rango 95 % si la cuota acierta</span><span><i class="line" style="background:var(--blue)"></i>Esperado</span><span><i style="background:var(--rust);border-radius:50%;width:14px;height:14px"></i>Observado</span></div>
+      <div class="chart-wrap"><canvas id="c-canvas"></canvas><div class="tip" id="c-tip"></div></div>
+    </div>
+    <div class="concl-notes" id="c-notes"></div>
+  </section>
+
+</div>
+
+<div id="progress"></div>
+<div id="counter"></div>
+<div id="nav"><button id="prev" aria-label="Anterior">‹</button><button id="next" aria-label="Siguiente">›</button><button id="fs" aria-label="Pantalla completa">⛶</button></div>
+<div id="help"><div>
+  <b>Atajos</b><br>
+  <kbd>→</kbd> <kbd>Espacio</kbd> siguiente &nbsp;·&nbsp; <kbd>←</kbd> anterior<br>
+  <kbd>Inicio</kbd> / <kbd>Fin</kbd> primera / última<br>
+  <kbd>F</kbd> pantalla completa &nbsp;·&nbsp; <kbd>?</kbd> esta ayuda
+</div></div>
+
+<script src="datos_mma.js"></script>
+<script src="presentacion.js"></script>
+<script src="ufc.js"></script>
+</body>
+</html>
